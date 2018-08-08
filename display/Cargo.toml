@@ -1,0 +1,10 @@
+[package]
+authors = ["Victor Koenders <victor.koenders@gmail.com>"]
+build = "build.rs"
+name = "display"
+version = "0.1.0"
+
+[dependencies]
+clap = "2.32.0"
+sdl2 = "0.31.0"
+snap = "0.2.4"
