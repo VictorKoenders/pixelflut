@@ -1,9 +1,0 @@
-[package]
-authors = ["Victor Koenders <victor.koenders@gmail.com>"]
-name = "proxy"
-version = "0.1.0"
-
-[dependencies]
-clap = "2.32.0"
-snap = "0.2.4"
-byteorder = "1.2.4"
