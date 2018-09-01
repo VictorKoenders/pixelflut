@@ -1,6 +1,10 @@
 [package]
+authors = ["trangar <Victor 'Trangar' Koenders>"]
 name = "pixelflut"
 version = "0.1.0"
-authors = ["trangar <Victor 'Trangar' Koenders>"]
 
 [dependencies]
+failure = "0.1.2"
+framebuffer = "0.1.7"
+num_cpus = "1.8.0"
+time = "0.1.40"
