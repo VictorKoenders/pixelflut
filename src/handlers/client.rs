@@ -91,8 +91,12 @@ fn run(receiver: Receiver<HandlerNotify>, counter: Arc<Mutex<usize>>) {
                 }
             };
             clients[index].1.extend_from_slice(&buffer[..len]);
+            clients[index].1.truncate(100); // make sure clients don't take up too much memory
             if let Some(i) = clients[index].1.iter().position(|c| c == &b'\n') {
-                if let Err(_) = handle_client_update(&mut clients, index, i) {}
+                let line = clients[index].1.drain(..i + 1).collect::<Vec<_>>();
+                if let Ok(str) = ::std::str::from_utf8(&line) {
+                    let _ = handle_client_update(&mut clients, index, str);
+                }
             }
         }
     }
@@ -101,11 +105,8 @@ fn run(receiver: Receiver<HandlerNotify>, counter: Arc<Mutex<usize>>) {
 fn handle_client_update(
     clients: &mut Vec<(TcpStream, Vec<u8>)>,
     index: usize,
-    i: usize,
+    str: &str,
 ) -> Result<()> {
-    let line = clients[index].1.drain(..i + 1).collect::<Vec<_>>();
-    let str = ::std::str::from_utf8(&line)?;
-    println!("{:?}", str);
     let mut iter = str.trim().split(' ');
 
     match iter.next() {

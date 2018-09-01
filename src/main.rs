@@ -6,8 +6,8 @@ extern crate time;
 #[macro_use]
 extern crate failure;
 
-pub mod handlers;
-pub type Result<T> = std::result::Result<T, failure::Error>;
+mod handlers;
+type Result<T> = std::result::Result<T, failure::Error>;
 
 fn main() {
     let num_cpus = num_cpus::get();

@@ -8,3 +8,6 @@ failure = "0.1.2"
 framebuffer = "0.1.7"
 num_cpus = "1.8.0"
 time = "0.1.40"
+
+[profile.release]
+lto = true

@@ -2,8 +2,6 @@ use framebuffer::Framebuffer;
 use handlers::client::Handle;
 use std::io::ErrorKind;
 use std::net::{Ipv4Addr, TcpListener};
-use std::thread::sleep;
-use std::time::Duration;
 use time;
 
 const FRAME_DURATION_NS: u64 = 1_000_000_000 / 60;
@@ -48,9 +46,9 @@ pub fn run(handles: &[Handle]) {
         FRAME_BYTES_PER_PIXEL = bytes_per_pixel;
         FRAME_SIZE_MESSAGE = format!("SIZE {} {}\n", width, height).as_bytes().into();
     }
+    let mut target_next_frame_time = time::precise_time_ns();
 
     loop {
-        let target_next_frame_time = time::precise_time_ns() + FRAME_DURATION_NS;
         loop {
             match listener.accept() {
                 Ok((client, _)) => {
@@ -69,11 +67,10 @@ pub fn run(handles: &[Handle]) {
                 Err(e) => panic!("Could not accept new client: {:?}", e),
             }
         }
-        buffer.write_frame(unsafe { &FRAME });
-
         let current_time = time::precise_time_ns();
-        if current_time < target_next_frame_time {
-            sleep(Duration::from_nanos(target_next_frame_time - current_time));
+        if target_next_frame_time < current_time {
+            buffer.write_frame(unsafe { &FRAME });
+            target_next_frame_time = current_time + FRAME_DURATION_NS;
         }
     }
 }
