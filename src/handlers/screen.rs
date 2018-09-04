@@ -7,12 +7,17 @@ use time;
 const FRAME_DURATION_NS: u64 = 1_000_000_000 / 60;
 
 static mut FRAME: Vec<u8> = Vec::new();
+static mut FRAME_WIDTH: usize = 0;
+static mut FRAME_HEIGHT: usize = 0;
 static mut FRAME_SIZE_MESSAGE: Vec<u8> = Vec::new();
 static mut FRAME_LINE_LENGTH: usize = 0;
 static mut FRAME_BYTES_PER_PIXEL: usize = 0;
 
 pub fn set_pixel((x, y): (usize, usize), (r, g, b): (u8, u8, u8)) {
     unsafe {
+        if x >= FRAME_WIDTH || y >= FRAME_HEIGHT {
+            return;
+        }
         let start_index = (y * FRAME_LINE_LENGTH + x * FRAME_BYTES_PER_PIXEL) as usize;
         FRAME[start_index] = b;
         FRAME[start_index + 1] = g;
@@ -42,6 +47,8 @@ pub fn run(handles: &[Handle]) {
 
     unsafe {
         FRAME = vec![0u8; line_length * height];
+        FRAME_WIDTH = width;
+        FRAME_HEIGHT = height;
         FRAME_LINE_LENGTH = line_length;
         FRAME_BYTES_PER_PIXEL = bytes_per_pixel;
         FRAME_SIZE_MESSAGE = format!("SIZE {} {}\n", width, height).as_bytes().into();
