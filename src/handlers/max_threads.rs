@@ -2,7 +2,6 @@ use client::Client;
 use screen::Screen;
 use std::io::Read;
 use std::net::{IpAddr, TcpListener, TcpStream};
-use std::ptr;
 use std::thread::{sleep, spawn};
 use std::time::Duration;
 use Result;
@@ -62,15 +61,11 @@ impl StreamReader {
         }
 
         if current_index > 0 {
-            unsafe {
-                ptr::copy(
-                    &self.buffer[current_index],
-                    &mut self.buffer[0],
-                    total_len - current_index,
-                );
-            }
+            let remaining: Vec<u8> = self.buffer[current_index..total_len].to_vec();
+            self.buffer[..remaining.len()].clone_from_slice(&remaining[..]);
 
             self.start_index = total_len - current_index;
+            debug_assert_eq!(self.start_index, remaining.len());
         } else {
             self.start_index = total_len - current_index;
         }
@@ -93,24 +88,44 @@ fn run_client(mut socket: TcpStream) -> Result<()> {
 
 #[test]
 pub fn test_stream_reader() {
-    let message = b"PX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\n";
+    use std::str;
+    let message = b"PX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\n";
 
     for i in 1..100 {
+        println!("i = {}", i);
         let mut reader = StreamReader::default();
         let mut j = 0;
         'j_loop: while j < message.len() {
+            let mut bytes_read = 0;
+            let mut message_index = j;
             for x in 0..i {
-                let message_index = j + x;
                 let buffer_index = reader.start_index + x;
                 if message_index >= message.len() {
                     break 'j_loop;
                 }
+                if buffer_index >= reader.buffer.len() {
+                    break;
+                }
                 reader.buffer[buffer_index] = message[message_index];
+                bytes_read += 1;
+                message_index += 1;
             }
-            reader.parse_contents(i, |buff| {
+            if bytes_read == 0 {
+                break;
+            }
+            println!(
+                "Buffer is {:?}",
+                str::from_utf8(&reader.buffer[..reader.start_index + bytes_read])
+            );
+            let mut count = 0;
+            let expected_count = (reader.start_index + bytes_read) / "PX 100 100 FFAABB\n".len();
+            reader.parse_contents(bytes_read, |buff| {
                 assert_eq!("PX 100 100 FFAABB", ::std::str::from_utf8(buff).unwrap());
+                count += 1;
             });
-            j += i;
+            println!("Expected {} messages, got {}", expected_count, count);
+            assert_eq!(expected_count, count);
+            j += bytes_read;
         }
     }
 }
