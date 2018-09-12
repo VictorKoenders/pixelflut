@@ -1,4 +1,5 @@
 #![feature(const_vec_new)]
+#![cfg_attr(test, feature(test))]
 
 extern crate clap;
 #[cfg(target_os = "linux")]
@@ -11,6 +12,8 @@ extern crate failure;
 #[cfg_attr(test, macro_use)]
 #[cfg(test)]
 extern crate proptest;
+#[cfg(test)]
+extern crate test;
 
 mod client;
 mod handlers;

@@ -47,7 +47,8 @@ impl Default for StreamReader {
 }
 
 impl StreamReader {
-    pub fn parse_contents(&mut self, bytes_read: usize, mut callback: impl FnMut(&[u8])) {
+    #[cfg(test)]
+    pub fn parse_contents_v1(&mut self, bytes_read: usize, mut callback: impl FnMut(&[u8])) {
         let total_len = self.start_index + bytes_read;
         let mut current_index = 0;
 
@@ -70,6 +71,27 @@ impl StreamReader {
             self.start_index = total_len - current_index;
         }
     }
+    pub fn parse_contents(&mut self, bytes_read: usize, mut callback: impl FnMut(&[u8])) {
+        let remaining = {
+            let bytes = &self.buffer[..self.start_index + bytes_read];
+            let mut split = bytes.split(|b| b == &b'\n').peekable();
+            loop {
+                if let Some(next) = split.next() {
+                    let after_this = split.peek();
+                    if after_this.is_none() {
+                        break next.to_vec();
+                    } else {
+                        callback(next);
+                    }
+                } else {
+                    unreachable!();
+                }
+            }
+        };
+
+        self.buffer[..remaining.len()].copy_from_slice(remaining.as_slice());
+        self.start_index = remaining.len();
+    }
 }
 
 fn run_client(mut socket: TcpStream) -> Result<()> {
@@ -86,27 +108,57 @@ fn run_client(mut socket: TcpStream) -> Result<()> {
     Ok(())
 }
 
+#[cfg(test)]
+const LONG_MESSAGE: &[u8] = b"PX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\n";
+
+#[bench]
+pub fn bench_stream_reader_v1(b: &mut ::test::Bencher) {
+    let mut reader = StreamReader::default();
+    b.iter(|| {
+        for chunk in LONG_MESSAGE.chunks(100) {
+            reader.start_index = 0;
+            reader.buffer[..chunk.len()].copy_from_slice(chunk);
+            reader.parse_contents_v1(100, |buff| {
+                ::test::black_box(buff);
+            });
+        }
+    });
+}
+
+#[bench]
+pub fn bench_stream_reader_v2(b: &mut ::test::Bencher) {
+    let mut reader = StreamReader::default();
+    b.iter(|| {
+        for chunk in LONG_MESSAGE.chunks(100) {
+            reader.start_index = 0;
+            reader.buffer[..chunk.len()].copy_from_slice(chunk);
+            reader.parse_contents(100, |buff| {
+                ::test::black_box(buff);
+            });
+        }
+    });
+}
+
 #[test]
 pub fn test_stream_reader() {
     use std::str;
-    let message = b"PX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\n";
 
     for i in 1..100 {
         println!("i = {}", i);
         let mut reader = StreamReader::default();
         let mut j = 0;
-        'j_loop: while j < message.len() {
+        'j_loop: while j < LONG_MESSAGE.len() {
             let mut bytes_read = 0;
             let mut message_index = j;
             for x in 0..i {
                 let buffer_index = reader.start_index + x;
-                if message_index >= message.len() {
+                if message_index >= LONG_MESSAGE.len() {
                     break 'j_loop;
                 }
                 if buffer_index >= reader.buffer.len() {
                     break;
                 }
-                reader.buffer[buffer_index] = message[message_index];
+                reader.buffer[buffer_index] = LONG_MESSAGE[message_index];
                 bytes_read += 1;
                 message_index += 1;
             }
