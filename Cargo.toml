@@ -2,17 +2,15 @@
 authors = ["trangar <Victor 'Trangar' Koenders>"]
 name = "pixelflut"
 version = "0.1.0"
+
 [dependencies]
-clap = "*"
+clap = "2.32.0"
 failure = "0.1.2"
 num_cpus = "1.8.0"
 time = "0.1.40"
 
-[profile]
 [profile.release]
 lto = true
 
-[target]
-[target."cfg(target_os=\"linux\")"]
 [target."cfg(target_os=\"linux\")".dependencies]
 framebuffer = "0.1.7"
