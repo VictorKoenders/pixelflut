@@ -86,11 +86,19 @@ fn run(receiver: &Receiver<HandlerNotify>, counter: &Arc<AtomicUsize>) {
             };
             let (stream, client_buffer) = &mut clients[index];
             client_buffer.extend_from_slice(&buffer[..len]);
-            while let Some(i) = buffer.iter().position(|c| c == &b'\n') {
-                let _ = Client.handle_message(stream, &buffer[..i]);
-                let _ = client_buffer.drain(..=i);
-            }
-            client_buffer.truncate(100); // make sure clients don't take up too much memory
+            let remaining = {
+                let mut split = client_buffer.split(|c| c == &b'\n').peekable();
+                loop {
+                    let current = split.next().unwrap();
+                    if split.peek().is_none() {
+                        break current.into_iter().cloned().collect();;
+                    } else {
+                        let _ = Client.handle_message(stream, current);
+                    }
+                }
+            };
+            *client_buffer = remaining;
+            client_buffer.truncate(100);
         }
     }
 }
