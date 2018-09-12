@@ -99,7 +99,7 @@ const FRAME_DURATION_NS: u64 = 1_000_000_000 / 60;
 
 pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize) {
     let listener = TcpListener::bind((host, port)).expect("Could not bind on port 1234");
-    let screen = Screen::init();
+    let mut screen = Screen::init();
 
     listener
         .set_nonblocking(true)

@@ -7,9 +7,9 @@ use std::time::Duration;
 use Result;
 
 pub fn main_loop(host: IpAddr, port: u16) {
-    let screen = Screen::init();
+    let mut screen = Screen::init();
 
-    spawn(move || render_loop(&screen));
+    spawn(move || render_loop(&mut screen));
 
     let listener = TcpListener::bind((host, port))
         .unwrap_or_else(|e| panic!("Could not listen on {}:{}: {:?}", host, port, e));
@@ -25,7 +25,7 @@ pub fn main_loop(host: IpAddr, port: u16) {
     }
 }
 
-fn render_loop(screen: &Screen) {
+fn render_loop(screen: &mut Screen) {
     loop {
         screen.render();
         sleep(Duration::from_millis(33));

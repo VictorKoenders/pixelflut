@@ -10,7 +10,7 @@ static mut FRAME_BYTES_PER_PIXEL: usize = 0;
 
 #[cfg(target_os = "linux")]
 pub struct Screen {
-    buffer: FrameBuffer,
+    buffer: Framebuffer,
 }
 #[cfg(not(target_os = "linux"))]
 pub struct Screen {
@@ -35,14 +35,13 @@ impl Screen {
 
     #[cfg(target_os = "linux")]
     pub fn init() -> Screen {
-        let mut buffer = Framebuffer::new("/dev/fb0").expect("Could not open frame buffer");
+        let buffer = Framebuffer::new("/dev/fb0").expect("Could not open frame buffer");
 
         let width = buffer.var_screen_info.xres as usize;
         let height = buffer.var_screen_info.yres as usize;
         let line_length = buffer.fix_screen_info.line_length as usize;
         let bytes_per_pixel = buffer.var_screen_info.bits_per_pixel as usize / 8;
         println!("width: {}, height: {}", width, height);
-        println!("Listening on {:?}", listener.local_addr());
 
         unsafe {
             FRAME = vec![0u8; line_length * height];
@@ -63,65 +62,10 @@ impl Screen {
     }
 
     #[cfg(target_os = "linux")]
-    pub fn render(&self) {
+    pub fn render(&mut self) {
         self.buffer.write_frame(unsafe { &FRAME });
     }
 
     #[cfg(not(target_os = "linux"))]
     pub fn render(&self) {}
 }
-
-/*
-pub fn run(handles: &[Handle]) {
-    let listener = TcpListener::bind((Ipv4Addr::new(0u8, 0, 0, 0), 1234))
-        .expect("Could not bind on port 1234");
-    listener
-        .set_nonblocking(true)
-        .expect("Could not set listener to nonblocking");
-
-    let mut buffer = Framebuffer::new("/dev/fb0").expect("Could not open frame buffer");
-
-    let width = buffer.var_screen_info.xres as usize;
-    let height = buffer.var_screen_info.yres as usize;
-    let line_length = buffer.fix_screen_info.line_length as usize;
-    let bytes_per_pixel = buffer.var_screen_info.bits_per_pixel as usize / 8;
-    println!("width: {}, height: {}", width, height);
-    println!("Listening on {:?}", listener.local_addr());
-
-    unsafe {
-        FRAME = vec![0u8; line_length * height];
-        FRAME_WIDTH = width;
-        FRAME_HEIGHT = height;
-        FRAME_LINE_LENGTH = line_length;
-        FRAME_BYTES_PER_PIXEL = bytes_per_pixel;
-        FRAME_SIZE_MESSAGE = format!("SIZE {} {}\n", width, height).as_bytes().into();
-    }
-    let mut target_next_frame_time = time::precise_time_ns();
-
-    loop {
-        loop {
-            match listener.accept() {
-                Ok((client, _)) => {
-                    let mut lowest = (0, handles[0].client_count());
-                    for i in 1..handles.len() {
-                        let count = handles[i].client_count();
-                        if count < lowest.1 {
-                            lowest = (i, count);
-                        }
-                    }
-                    handles[lowest.0].add_client(client);
-                }
-                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                    break;
-                }
-                Err(e) => panic!("Could not accept new client: {:?}", e),
-            }
-        }
-        let current_time = time::precise_time_ns();
-        if target_next_frame_time < current_time {
-            buffer.write_frame(unsafe { &FRAME });
-            target_next_frame_time = current_time + FRAME_DURATION_NS;
-        }
-    }
-}
-*/
