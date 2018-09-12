@@ -1,24 +1,78 @@
 #![feature(const_vec_new)]
 
+extern crate clap;
+#[cfg(target_os = "linux")]
 extern crate framebuffer;
 extern crate num_cpus;
 extern crate time;
 #[macro_use]
 extern crate failure;
 
+mod client;
 mod handlers;
+mod screen;
+
 type Result<T> = std::result::Result<T, failure::Error>;
 
+use clap::{App, Arg, SubCommand};
+
 fn main() {
-    let num_cpus = num_cpus::get();
+    let cpu_str = format!(
+        "Determine the number of CPU cores to use. 0 for unlimited. Max for this machine is {}.",
+        num_cpus::get()
+    );
+    let matches = App::new("PixelFlut")
+        .arg(
+            Arg::with_name("host")
+                .short("h")
+                .long("host")
+                .takes_value(true)
+                .help("Specify the host to bind to, defaults to 0.0.0.0"),
+        ).arg(
+            Arg::with_name("port")
+                .short("p")
+                .long("port")
+                .takes_value(true)
+                .help("Specify the port to listen on, defaults to 1234"),
+        ).subcommand(SubCommand::with_name("cpu_bound")
+            .about("Uses 1 CPU core for rendering and accepting new connections. The incoming clients are split over the remaining cores.")
+            .arg(Arg::with_name("num_cpus")
+                .short("c")
+                .long("num_cpus")
+                .takes_value(true)
+                .help(&cpu_str)))
+        .subcommand(SubCommand::with_name("max_threads")
+            .about("Spawns a new thread for each incoming connection."))
+        .get_matches();
 
-    // We're claiming 1 CPU for the video rendering and accepting new clients
-    // The other CPUs will be used to handle clients
-    let handler_count = num_cpus - 1;
-    let mut handles = Vec::with_capacity(handler_count);
-    for _ in 0..handler_count {
-        handles.push(handlers::client::Handle::new());
+    let host: std::net::IpAddr = matches
+        .value_of("host")
+        .unwrap_or("0.0.0.0")
+        .parse()
+        .expect("Host is invalid, IP address expected");
+    let port: u16 = matches
+        .value_of("port")
+        .unwrap_or("1234")
+        .parse()
+        .expect("Port is invalid");
+
+    let (subcommand_name, subcommand_matches) = matches.subcommand();
+    match subcommand_name {
+        "cpu_bound" => {
+            let mut cpus: usize = subcommand_matches
+                .and_then(|m| m.value_of("num_cpus"))
+                .unwrap_or("0")
+                .parse()
+                .expect("num_cpus is invalid");
+            if cpus == 0 || cpus > num_cpus::get() {
+                cpus = num_cpus::get();
+            }
+            handlers::cpu_handler::main_loop(host, port, cpus);
+        }
+        "max_threads" => handlers::max_threads::main_loop(host, port),
+        _ => println!(
+            "Missing subcommand, run `{} help` for more information",
+            std::env::args().next().unwrap()
+        ),
     }
-
-    handlers::screen::run(&handles);
 }
