@@ -8,6 +8,10 @@ extern crate time;
 #[macro_use]
 extern crate failure;
 
+#[cfg_attr(test, macro_use)]
+#[cfg(test)]
+extern crate proptest;
+
 mod client;
 mod handlers;
 mod screen;

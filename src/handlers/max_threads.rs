@@ -129,3 +129,24 @@ pub fn test_stream_reader() {
         }
     }
 }
+
+#[cfg(test)]
+proptest! {
+    #[test]
+    fn fuzz_stream_reader(parts: [[u8; 25];4]) {
+        let flat: Vec<u8> = parts.iter().flatten().cloned().collect();
+        let mut split = flat.split(|b| b == &b'\n');
+
+        let mut reader = StreamReader::default();
+        reader.buffer[..].copy_from_slice(&flat);
+
+        reader.parse_contents(100, |buff| {
+            assert_eq!(split.next().unwrap(), buff);
+        });
+        let last = split.next().unwrap();
+        assert_eq!(None, split.next());
+
+        assert_eq!(reader.start_index, last.len());
+        assert_eq!(last, &reader.buffer[..reader.start_index]);
+    }
+}

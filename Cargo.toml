@@ -14,3 +14,6 @@ lto = true
 
 [target."cfg(target_os=\"linux\")".dependencies]
 framebuffer = "0.1.7"
+
+[dev-dependencies]
+proptest = "0.8.6"
