@@ -6,7 +6,6 @@ extern crate clap;
 extern crate framebuffer;
 extern crate num_cpus;
 extern crate time;
-#[macro_use]
 extern crate failure;
 
 #[cfg_attr(test, macro_use)]
