@@ -16,4 +16,4 @@ lto = true
 framebuffer = "0.1.7"
 
 [dev-dependencies]
-proptest = "0.8.6"
+proptest = "0.8.7"
