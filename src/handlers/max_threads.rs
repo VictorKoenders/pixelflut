@@ -32,6 +32,7 @@ fn render_loop(screen: &mut Screen) {
     }
 }
 
+#[cfg_attr(test, derive(Clone))]
 struct StreamReader {
     pub buffer: [u8; 100],
     pub start_index: usize,
@@ -92,6 +93,21 @@ impl StreamReader {
         self.buffer[..remaining.len()].copy_from_slice(remaining.as_slice());
         self.start_index = remaining.len();
     }
+
+    #[cfg(test)]
+    fn parse_contents_v3(&mut self, bytes_read: usize, mut cb: impl FnMut(&[u8])) {
+        let buffer = {
+            let total_len = self.start_index + bytes_read;
+            let mut buffer = &self.buffer[..total_len];
+            while let Some(index) = buffer.iter().position(|b| *b == b'\n') {
+                cb(&buffer[..index]);
+                buffer = &buffer[index + 1..];
+            }
+            buffer.to_vec()
+        };
+        self.start_index = buffer.len();
+        self.buffer[..buffer.len()].copy_from_slice(buffer.as_slice());
+    }
 }
 
 fn run_client(mut socket: TcpStream) -> Result<()> {
@@ -113,28 +129,66 @@ const LONG_MESSAGE: &[u8] = b"PX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 F
 
 #[bench]
 pub fn bench_stream_reader_v1(b: &mut ::test::Bencher) {
-    let mut reader = StreamReader::default();
-    b.iter(|| {
-        for chunk in LONG_MESSAGE.chunks(100) {
+    let readers = LONG_MESSAGE
+        .chunks(90)
+        .map(|c| {
+            let mut reader = StreamReader::default();
             reader.start_index = 0;
-            reader.buffer[..chunk.len()].copy_from_slice(chunk);
-            reader.parse_contents_v1(100, |buff| {
-                ::test::black_box(buff);
-            });
+            reader.buffer[..c.len()].copy_from_slice(c);
+            (reader, c.len())
+        }).collect::<Vec<_>>();
+    b.iter(|| {
+        let mut readers = readers.clone();
+        for _ in 0..1000 {
+            for reader in &mut readers {
+                reader.0.parse_contents_v1(reader.1, |buff| {
+                    ::test::black_box(buff);
+                });
+            }
         }
     });
 }
 
 #[bench]
 pub fn bench_stream_reader_v2(b: &mut ::test::Bencher) {
-    let mut reader = StreamReader::default();
-    b.iter(|| {
-        for chunk in LONG_MESSAGE.chunks(100) {
+    let readers = LONG_MESSAGE
+        .chunks(90)
+        .map(|c| {
+            let mut reader = StreamReader::default();
             reader.start_index = 0;
-            reader.buffer[..chunk.len()].copy_from_slice(chunk);
-            reader.parse_contents(100, |buff| {
-                ::test::black_box(buff);
-            });
+            reader.buffer[..c.len()].copy_from_slice(c);
+            (reader, c.len())
+        }).collect::<Vec<_>>();
+    b.iter(|| {
+        let mut readers = readers.clone();
+        for _ in 0..1000 {
+            for reader in &mut readers {
+                reader.0.parse_contents(reader.1, |buff| {
+                    ::test::black_box(buff);
+                });
+            }
+        }
+    });
+}
+
+#[bench]
+pub fn bench_stream_reader_v3(b: &mut ::test::Bencher) {
+    let readers = LONG_MESSAGE
+        .chunks(90)
+        .map(|c| {
+            let mut reader = StreamReader::default();
+            reader.start_index = 0;
+            reader.buffer[..c.len()].copy_from_slice(c);
+            (reader, c.len())
+        }).collect::<Vec<_>>();
+    b.iter(|| {
+        let mut readers = readers.clone();
+        for _ in 0..1000 {
+            for reader in &mut readers {
+                reader.0.parse_contents_v3(reader.1, |buff| {
+                    ::test::black_box(buff);
+                });
+            }
         }
     });
 }
@@ -172,6 +226,49 @@ pub fn test_stream_reader() {
             let mut count = 0;
             let expected_count = (reader.start_index + bytes_read) / "PX 100 100 FFAABB\n".len();
             reader.parse_contents(bytes_read, |buff| {
+                assert_eq!("PX 100 100 FFAABB", ::std::str::from_utf8(buff).unwrap());
+                count += 1;
+            });
+            println!("Expected {} messages, got {}", expected_count, count);
+            assert_eq!(expected_count, count);
+            j += bytes_read;
+        }
+    }
+}
+
+#[test]
+pub fn test_stream_reader_v3() {
+    use std::str;
+
+    for i in 1..100 {
+        println!("i = {}", i);
+        let mut reader = StreamReader::default();
+        let mut j = 0;
+        'j_loop: while j < LONG_MESSAGE.len() {
+            let mut bytes_read = 0;
+            let mut message_index = j;
+            for x in 0..i {
+                let buffer_index = reader.start_index + x;
+                if message_index >= LONG_MESSAGE.len() {
+                    break 'j_loop;
+                }
+                if buffer_index >= reader.buffer.len() {
+                    break;
+                }
+                reader.buffer[buffer_index] = LONG_MESSAGE[message_index];
+                bytes_read += 1;
+                message_index += 1;
+            }
+            if bytes_read == 0 {
+                break;
+            }
+            println!(
+                "Buffer is {:?}",
+                str::from_utf8(&reader.buffer[..reader.start_index + bytes_read])
+            );
+            let mut count = 0;
+            let expected_count = (reader.start_index + bytes_read) / "PX 100 100 FFAABB\n".len();
+            reader.parse_contents_v3(bytes_read, |buff| {
                 assert_eq!("PX 100 100 FFAABB", ::std::str::from_utf8(buff).unwrap());
                 count += 1;
             });

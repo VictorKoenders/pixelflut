@@ -18,15 +18,15 @@ pub struct Screen {
 }
 
 impl Screen {
-    pub fn set_pixel((x, y): (usize, usize), (r, g, b): (u8, u8, u8)) {
+    pub fn set_pixel((x, y): (usize, usize), (red, green, blue): (u8, u8, u8)) {
         unsafe {
             if x >= FRAME_WIDTH || y >= FRAME_HEIGHT {
                 return;
             }
             let start_index = (y * FRAME_LINE_LENGTH + x * FRAME_BYTES_PER_PIXEL) as usize;
-            FRAME[start_index] = b;
-            FRAME[start_index + 1] = g;
-            FRAME[start_index + 2] = r;
+            FRAME[start_index] = blue;
+            FRAME[start_index + 1] = green;
+            FRAME[start_index + 2] = red;
         }
     }
     pub fn get_screen_size_message() -> &'static [u8] {

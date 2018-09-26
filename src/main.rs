@@ -2,11 +2,11 @@
 #![cfg_attr(test, feature(test))]
 
 extern crate clap;
+extern crate failure;
 #[cfg(target_os = "linux")]
 extern crate framebuffer;
 extern crate num_cpus;
 extern crate time;
-extern crate failure;
 
 #[cfg_attr(test, macro_use)]
 #[cfg(test)]

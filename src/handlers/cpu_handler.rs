@@ -85,22 +85,76 @@ fn run(receiver: &Receiver<HandlerNotify>, counter: &Arc<AtomicUsize>) {
                 }
             };
             let (stream, client_buffer) = &mut clients[index];
+            // We now copy this buffer to our internal buffer, then we split it, then we
+            // copy the remainder to our internal buffer again.
+            // TODO: Figure out a way to do this more in-place
             client_buffer.extend_from_slice(&buffer[..len]);
-            let remaining = {
-                let mut split = client_buffer.split(|c| c == &b'\n').peekable();
-                loop {
-                    let current = split.next().unwrap();
-                    if split.peek().is_none() {
-                        break current.into_iter().cloned().collect();;
-                    } else {
-                        let _ = Client.handle_message(stream, current);
-                    }
-                }
-            };
+            let remaining = split_v1(&client_buffer, |cmd| {
+                let _ = Client.handle_message(stream, cmd);
+            });
             *client_buffer = remaining;
             client_buffer.truncate(100);
         }
     }
+}
+
+fn split_v1(buffer: &[u8], mut cb: impl FnMut(&[u8])) -> Vec<u8> {
+    let mut split = buffer.split(|c| c == &b'\n').peekable();
+    loop {
+        let current = split.next().unwrap();
+        if split.peek().is_none() {
+            break current.into_iter().cloned().collect();;
+        } else {
+            cb(current);
+        }
+    }
+}
+
+#[bench]
+fn bench_buffer_split_v1(b: &mut ::test::Bencher) {
+    let buffer = b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n";
+    b.iter(|| {
+        let result = split_v1(&buffer[..], |c| {
+            ::test::black_box(c);
+        });
+        ::test::black_box(result);
+    });
+}
+#[test]
+fn test_buffer_split_v1() {
+    let buffer = b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123";
+    let result = split_v1(&buffer[..], |c| {
+        assert_eq!(b"1234567890", c);
+    });
+    assert_eq!(&b"123"[..], result.as_slice());
+}
+
+#[cfg(test)]
+fn split_v2(mut buffer: &[u8], mut cb: impl FnMut(&[u8])) -> Vec<u8> {
+    while let Some(index) = buffer.iter().position(|b| *b == b'\n') {
+        cb(&buffer[..index]);
+        buffer = &buffer[index + 1..];
+    }
+    buffer.to_vec()
+}
+
+#[bench]
+fn bench_buffer_split_v2(b: &mut ::test::Bencher) {
+    let buffer = b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n";
+    b.iter(|| {
+        let result = split_v2(&buffer[..], |c| {
+            ::test::black_box(c);
+        });
+        ::test::black_box(result);
+    });
+}
+#[test]
+fn test_buffer_split_v2() {
+    let buffer = b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123";
+    let result = split_v2(&buffer[..], |c| {
+        assert_eq!(b"1234567890", c);
+    });
+    assert_eq!(&b"123"[..], result.as_slice());
 }
 
 const FRAME_DURATION_NS: u64 = 1_000_000_000 / 60;

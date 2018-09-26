@@ -45,11 +45,11 @@ fn handle_message_v1(buffer: &[u8]) -> Result<&'static [u8], ()> {
                 return Err(());
             }
 
-            let r = u8::from_str_radix(&format[0..2], 16).map_err(|_| ())?;
-            let g = u8::from_str_radix(&format[2..4], 16).map_err(|_| ())?;
-            let b = u8::from_str_radix(&format[4..], 16).map_err(|_| ())?;
+            let red = u8::from_str_radix(&format[0..2], 16).map_err(|_| ())?;
+            let green = u8::from_str_radix(&format[2..4], 16).map_err(|_| ())?;
+            let blue = u8::from_str_radix(&format[4..], 16).map_err(|_| ())?;
 
-            Screen::set_pixel((x, y), (r, g, b));
+            Screen::set_pixel((x, y), (red, green, blue));
             Ok(&[])
         }
         Some("HELP") => {
@@ -97,14 +97,14 @@ fn handle_message_v2(buffer: &[u8]) -> Result<&'static [u8], ()> {
 fn parse_px(buffer: &[u8]) -> Result<&'static [u8], ()> {
     let mut first_index = 0;
     let mut second_index = 0;
-    for i in 0..buffer.len() {
-        if buffer[i] == b' ' {
+    for (i, char) in buffer.iter().enumerate() {
+        if char == &b' ' {
             first_index = i;
             break;
         }
     }
-    for i in first_index + 1..buffer.len() {
-        if buffer[i] == b' ' {
+    for (i, char) in buffer.iter().enumerate().skip(first_index + 1) {
+        if char == &b' ' {
             second_index = i;
             break;
         }
@@ -115,11 +115,11 @@ fn parse_px(buffer: &[u8]) -> Result<&'static [u8], ()> {
 
     let x = fast_parse_usize(&buffer[..first_index])?;
     let y = fast_parse_usize(&buffer[first_index + 1..second_index])?;
-    let r = fast_parse_hex(&buffer[second_index + 1..second_index + 3])?;
-    let g = fast_parse_hex(&buffer[second_index + 3..second_index + 5])?;
-    let b = fast_parse_hex(&buffer[second_index + 5..second_index + 7])?;
+    let red = fast_parse_hex(&buffer[second_index + 1..second_index + 3])?;
+    let green = fast_parse_hex(&buffer[second_index + 3..second_index + 5])?;
+    let blue = fast_parse_hex(&buffer[second_index + 5..second_index + 7])?;
 
-    Screen::set_pixel((x, y), (r, g, b));
+    Screen::set_pixel((x, y), (red, green, blue));
 
     Ok(&[])
 }
