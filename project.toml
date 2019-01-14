@@ -1,0 +1,11 @@
+[project]
+name = "pixelflut"
+artifacts = [
+    "target/release/*
+]
+
+steps = [
+    "cargo build",
+    "cargo test",
+    "cargo release"
+]
