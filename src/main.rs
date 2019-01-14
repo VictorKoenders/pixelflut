@@ -1,12 +1,6 @@
 #![feature(const_vec_new)]
 #![cfg_attr(test, feature(test))]
-
-extern crate clap;
-extern crate failure;
-#[cfg(target_os = "linux")]
-extern crate framebuffer;
-extern crate num_cpus;
-extern crate time;
+#![cfg_attr(debug_assertions, allow(warnings))]
 
 #[cfg_attr(test, macro_use)]
 #[cfg(test)]
@@ -16,9 +10,11 @@ extern crate test;
 
 mod client;
 mod handlers;
+mod lines;
 mod screen;
+mod utils;
 
-type Result<T> = std::result::Result<T, failure::Error>;
+pub use crate::utils::*;
 
 use clap::{App, Arg, SubCommand};
 
@@ -49,6 +45,8 @@ fn main() {
                 .help(&cpu_str)))
         .subcommand(SubCommand::with_name("max_threads")
             .about("Spawns a new thread for each incoming connection."))
+        .subcommand(SubCommand::with_name("async")
+            .about("Uses async networking to let the OS push messages to the application without waiting for it."))
         .get_matches();
 
     let host: std::net::IpAddr = matches
@@ -76,6 +74,7 @@ fn main() {
             handlers::cpu_handler::main_loop(host, port, cpus);
         }
         "max_threads" => handlers::max_threads::main_loop(host, port),
+        "async" => handlers::async_handler::main_loop(host, port),
         _ => println!(
             "Missing subcommand, run `{} help` for more information",
             std::env::args().next().unwrap()

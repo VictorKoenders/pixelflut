@@ -1,10 +1,10 @@
-use client::Client;
-use screen::Screen;
+use crate::client::Client;
+use crate::screen::Screen;
+use crate::Result;
 use std::io::Read;
 use std::net::{IpAddr, TcpListener, TcpStream};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
-use Result;
 
 pub fn main_loop(host: IpAddr, port: u16) {
     let mut screen = Screen::init();
@@ -136,7 +136,8 @@ pub fn bench_stream_reader_v1(b: &mut ::test::Bencher) {
             reader.start_index = 0;
             reader.buffer[..c.len()].copy_from_slice(c);
             (reader, c.len())
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
     b.iter(|| {
         let mut readers = readers.clone();
         for _ in 0..1000 {
@@ -158,7 +159,8 @@ pub fn bench_stream_reader_v2(b: &mut ::test::Bencher) {
             reader.start_index = 0;
             reader.buffer[..c.len()].copy_from_slice(c);
             (reader, c.len())
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
     b.iter(|| {
         let mut readers = readers.clone();
         for _ in 0..1000 {
@@ -180,7 +182,8 @@ pub fn bench_stream_reader_v3(b: &mut ::test::Bencher) {
             reader.start_index = 0;
             reader.buffer[..c.len()].copy_from_slice(c);
             (reader, c.len())
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
     b.iter(|| {
         let mut readers = readers.clone();
         for _ in 0..1000 {

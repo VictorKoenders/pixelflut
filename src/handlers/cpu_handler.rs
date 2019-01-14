@@ -1,5 +1,5 @@
-use client::Client;
-use screen::Screen;
+use crate::client::Client;
+use crate::screen::Screen;
 use std::io::{ErrorKind, Read, Write};
 use std::net::{IpAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicUsize, Ordering};

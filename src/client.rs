@@ -1,4 +1,4 @@
-use screen::Screen;
+use crate::screen::Screen;
 use std::io::Write;
 use std::net::TcpStream;
 #[cfg(test)]
@@ -13,6 +13,10 @@ const HELP_MESSAGE: &[u8] = br#"Possible commands:
 pub struct Client;
 
 impl Client {
+    pub fn handle_message_response(&self, buffer: &[u8]) -> Result<&'static [u8], ()> {
+        handle_message_v2(buffer)
+    }
+
     pub fn handle_message(&self, stream: &mut TcpStream, buffer: &[u8]) -> Result<(), ()> {
         let slice = handle_message_v2(buffer)?;
         if !slice.is_empty() {
@@ -70,26 +74,34 @@ fn handle_message_v1(buffer: &[u8]) -> Result<&'static [u8], ()> {
 fn handle_message_v2(buffer: &[u8]) -> Result<&'static [u8], ()> {
     match buffer.get(0) {
         Some(b'P') | Some(b'p') => parse_px(&buffer[3..]),
-        Some(b'S') => if &buffer[1..] == b"IZE" {
-            Ok(Screen::get_screen_size_message())
-        } else {
-            Ok(&[])
-        },
-        Some(b's') => if &buffer[1..] == b"ize" {
-            Ok(Screen::get_screen_size_message())
-        } else {
-            Ok(&[])
-        },
-        Some(b'H') => if &buffer[1..] == b"ELP" {
-            Ok(HELP_MESSAGE)
-        } else {
-            Ok(&[])
-        },
-        Some(b'h') => if &buffer[1..] == b"elp" {
-            Ok(HELP_MESSAGE)
-        } else {
-            Ok(&[])
-        },
+        Some(b'S') => {
+            if &buffer[1..] == b"IZE" {
+                Ok(Screen::get_screen_size_message())
+            } else {
+                Ok(&[])
+            }
+        }
+        Some(b's') => {
+            if &buffer[1..] == b"ize" {
+                Ok(Screen::get_screen_size_message())
+            } else {
+                Ok(&[])
+            }
+        }
+        Some(b'H') => {
+            if &buffer[1..] == b"ELP" {
+                Ok(HELP_MESSAGE)
+            } else {
+                Ok(&[])
+            }
+        }
+        Some(b'h') => {
+            if &buffer[1..] == b"elp" {
+                Ok(HELP_MESSAGE)
+            } else {
+                Ok(&[])
+            }
+        }
         _ => Ok(&[]),
     }
 }
