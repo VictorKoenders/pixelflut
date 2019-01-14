@@ -1,14 +1,8 @@
-use bytes::{BufMut, Bytes, BytesMut};
-use futures::future::{self, Either};
-use futures::sync::mpsc;
+use bytes::{BufMut, BytesMut};
 use futures::try_ready;
 use tokio::io;
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpStream;
 use tokio::prelude::*;
-
-use std::collections::HashMap;
-use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
 
 /// Line based codec
 ///
