@@ -3,8 +3,9 @@ authors = ["trangar <Victor 'Trangar' Koenders>"]
 edition = "2018"
 name = "pixelflut"
 version = "0.1.0"
+
 [dependencies]
-bytes = "*"
+bytes = "0.4"
 clap = "2.32"
 failure = "0.1"
 futures = "0.1"
@@ -13,13 +14,10 @@ time = "0.1"
 tokio = "0.1"
 
 [dev-dependencies]
-proptest = "0.8.7"
+proptest = "0.8"
 
-[profile]
 [profile.release]
 lto = true
 
-[target]
-[target."cfg(target_os=\"linux\")"]
 [target."cfg(target_os=\"linux\")".dependencies]
 framebuffer = "0.1"

@@ -103,7 +103,7 @@ fn split_v1(buffer: &[u8], mut cb: impl FnMut(&[u8])) -> Vec<u8> {
     loop {
         let current = split.next().unwrap();
         if split.peek().is_none() {
-            break current.into_iter().cloned().collect();;
+            break current.to_vec();
         } else {
             cb(current);
         }
