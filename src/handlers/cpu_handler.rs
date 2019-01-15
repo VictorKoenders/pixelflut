@@ -145,7 +145,7 @@ fn bench_buffer_split_v2(b: &mut ::test::Bencher) {
     let vec: Vec<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n"[..]);
     b.iter(|| {
         let mut cloned = vec.clone();
-        let result = split_v2(&cloned[..], |c| {
+        let result = split(&cloned[..], |c| {
             ::test::black_box(c);
         });
         *(&mut cloned) = result;
@@ -155,7 +155,7 @@ fn bench_buffer_split_v2(b: &mut ::test::Bencher) {
 #[test]
 fn test_buffer_split_v2() {
     let buffer = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]);
-    let result = split_v2(&buffer[..], |c| {
+    let result = split(&buffer[..], |c| {
         assert_eq!(b"1234567890", c);
     });
     assert_eq!(&b"123"[..], result.as_slice());
