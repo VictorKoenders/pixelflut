@@ -1,6 +1,5 @@
 #![feature(const_vec_new)]
 #![cfg_attr(test, feature(test))]
-#![cfg_attr(debug_assertions, allow(warnings))]
 
 #[cfg_attr(test, macro_use)]
 #[cfg(test)]
