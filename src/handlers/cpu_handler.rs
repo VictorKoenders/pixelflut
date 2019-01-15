@@ -89,7 +89,7 @@ fn run(receiver: &Receiver<HandlerNotify>, counter: &Arc<AtomicUsize>) {
             // copy the remainder to our internal buffer again.
             // TODO: Figure out a way to do this more in-place
             client_buffer.extend_from_slice(&buffer[..len]);
-            let remaining = split_v1(&client_buffer, |cmd| {
+            let remaining = split(&client_buffer, |cmd| {
                 let _ = Client.handle_message(stream, cmd);
             });
             *client_buffer = remaining;
@@ -98,6 +98,7 @@ fn run(receiver: &Receiver<HandlerNotify>, counter: &Arc<AtomicUsize>) {
     }
 }
 
+#[cfg(test)]
 fn split_v1(buffer: &[u8], mut cb: impl FnMut(&[u8])) -> Vec<u8> {
     let mut split = buffer.split(|c| c == &b'\n').peekable();
     loop {
@@ -131,8 +132,7 @@ fn test_buffer_split_v1() {
     assert_eq!(&b"123"[..], result.as_slice());
 }
 
-#[cfg(test)]
-fn split_v2(mut buffer: &[u8], mut cb: impl FnMut(&[u8])) -> Vec<u8> {
+fn split(mut buffer: &[u8], mut cb: impl FnMut(&[u8])) -> Vec<u8> {
     while let Some(index) = buffer.iter().position(|b| *b == b'\n') {
         cb(&buffer[..index]);
         buffer = &buffer[index + 1..];
@@ -164,14 +164,23 @@ fn test_buffer_split_v2() {
 #[cfg(test)]
 fn split_v3(buffer: &mut Vec<u8>, mut cb: impl FnMut(&[u8])) {
     let mut offset = 0;
-    while let Some(index) = buffer.iter().skip(offset).position(|b| *b == b'\n') {
-        cb(&buffer[offset..offset + index]);
-        offset += index + 1;
+    let mut i = 0;
+    while i < buffer.len() {
+        if unsafe { buffer.get_unchecked(i) } == &b'\n' {
+            cb(&buffer[offset..i]);
+            offset = i + 1;
+            i += 2;
+        } else {
+            i += 1;
+        }
     }
-    let remaining_range = offset..buffer.len();
     let new_length = buffer.len() - offset;
-    buffer.copy_within(remaining_range, 0);
     unsafe {
+        std::ptr::copy_nonoverlapping(
+            buffer.get_unchecked(offset),
+            buffer.get_unchecked_mut(0),
+            new_length,
+        );
         buffer.set_len(new_length);
     }
 }
