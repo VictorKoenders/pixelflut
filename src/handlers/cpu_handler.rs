@@ -98,114 +98,7 @@ fn run(receiver: &Receiver<HandlerNotify>, counter: &Arc<AtomicUsize>) {
     }
 }
 
-#[cfg(test)]
-fn split_v1(buffer: &[u8], mut cb: impl FnMut(&[u8])) -> Vec<u8> {
-    let mut split = buffer.split(|c| c == &b'\n').peekable();
-    loop {
-        let current = split.next().unwrap();
-        if split.peek().is_none() {
-            break current.to_vec();
-        } else {
-            cb(current);
-        }
-    }
-}
-
-#[bench]
-fn bench_buffer_split_v1(b: &mut ::test::Bencher) {
-    let vec: Vec<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n"[..]);
-    b.iter(|| {
-        let mut cloned: Vec<u8> = vec.clone();
-        let result: Vec<u8> = split_v1(&cloned[..], |c| {
-            ::test::black_box(c);
-        });
-        *(&mut cloned) = result;
-        ::test::black_box(cloned);
-    });
-}
-#[test]
-fn test_buffer_split_v1() {
-    let buffer = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]);
-    let result = split_v1(&buffer[..], |c| {
-        assert_eq!(b"1234567890", c);
-    });
-    assert_eq!(&b"123"[..], result.as_slice());
-}
-
-fn split(mut buffer: &[u8], mut cb: impl FnMut(&[u8])) -> Vec<u8> {
-    while let Some(index) = buffer.iter().position(|b| *b == b'\n') {
-        cb(&buffer[..index]);
-        buffer = &buffer[index + 1..];
-    }
-    buffer.to_vec()
-}
-
-#[bench]
-fn bench_buffer_split_v2(b: &mut ::test::Bencher) {
-    let vec: Vec<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n"[..]);
-    b.iter(|| {
-        let mut cloned = vec.clone();
-        let result = split(&cloned[..], |c| {
-            ::test::black_box(c);
-        });
-        *(&mut cloned) = result;
-        ::test::black_box(cloned);
-    });
-}
-#[test]
-fn test_buffer_split_v2() {
-    let buffer = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]);
-    let result = split(&buffer[..], |c| {
-        assert_eq!(b"1234567890", c);
-    });
-    assert_eq!(&b"123"[..], result.as_slice());
-}
-
-#[cfg(test)]
-fn split_v3(buffer: &mut Vec<u8>, mut cb: impl FnMut(&[u8])) {
-    let mut offset = 0;
-    let mut i = 0;
-    while i < buffer.len() {
-        if unsafe { buffer.get_unchecked(i) } == &b'\n' {
-            cb(&buffer[offset..i]);
-            offset = i + 1;
-            i += 2;
-        } else {
-            i += 1;
-        }
-    }
-    let new_length = buffer.len() - offset;
-    unsafe {
-        std::ptr::copy_nonoverlapping(
-            buffer.get_unchecked(offset),
-            buffer.get_unchecked_mut(0),
-            new_length,
-        );
-        buffer.set_len(new_length);
-    }
-}
-
-#[bench]
-fn bench_buffer_split_v3(b: &mut ::test::Bencher) {
-    let vec: Vec<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n"[..]);
-    b.iter(|| {
-        let mut cloned = vec.clone();
-        split_v3(&mut cloned, |c| {
-            ::test::black_box(c);
-        });
-        ::test::black_box(cloned);
-    });
-}
-#[test]
-fn test_buffer_split_v3() {
-    let mut buffer = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]);
-    split_v3(&mut buffer, |c| {
-        assert_eq!(b"1234567890", c);
-    });
-    assert_eq!(&b"123"[..], buffer.as_slice());
-}
-
-const FRAME_DURATION_NS: u64 = 1_000_000_000 / 60;
+const FRAME_DURATION_NS: u64 = 1_000_000_000 / 30;
 
 pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize) {
     let listener = TcpListener::bind((host, port)).expect("Could not bind on port 1234");
@@ -250,4 +143,104 @@ pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize) {
         target_next_frame_time = time::precise_time_ns() + FRAME_DURATION_NS;
         screen.render();
     }
+}
+
+#[cfg(test)]
+fn split_v1(buffer: &[u8], mut cb: impl FnMut(&[u8])) -> Vec<u8> {
+    let mut split = buffer.split(|c| c == &b'\n').peekable();
+    loop {
+        let current = split.next().unwrap();
+        if split.peek().is_none() {
+            break current.to_vec();
+        } else {
+            cb(current);
+        }
+    }
+}
+
+fn split(mut buffer: &[u8], mut cb: impl FnMut(&[u8])) -> Vec<u8> {
+    while let Some(index) = buffer.iter().position(|b| *b == b'\n') {
+        cb(&buffer[..index]);
+        buffer = &buffer[index + 1..];
+    }
+    buffer.to_vec()
+}
+
+#[cfg(test)]
+fn split_v3(buffer: &mut Vec<u8>, mut cb: impl FnMut(&[u8])) {
+    let mut offset = 0;
+    let mut i = 0;
+    while i < buffer.len() {
+        if unsafe { buffer.get_unchecked(i) } == &b'\n' {
+            cb(&buffer[offset..i]);
+            offset = i + 1;
+            i += 2;
+        } else {
+            i += 1;
+        }
+    }
+    let new_length = buffer.len() - offset;
+    unsafe {
+        std::ptr::copy_nonoverlapping(
+            buffer.get_unchecked(offset),
+            buffer.get_unchecked_mut(0),
+            new_length,
+        );
+        buffer.set_len(new_length);
+    }
+}
+
+macro_rules! test_and_bench {
+    ($fn_name:ident) => {
+        test_and_bench!($fn_name, $fn_name);
+    };
+    ($mod_name:ident, $fn_name:ident) => {
+        pub mod $mod_name {
+
+            #[bench]
+            fn bench(b: &mut ::test::Bencher) {
+                let vec: Vec<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n"[..]);
+                b.iter(|| {
+                    let mut cloned: Vec<u8> = vec.clone();
+                    let result: Vec<u8> = super::$fn_name(&cloned[..], |c| {
+                        ::test::black_box(c);
+                    });
+                    *(&mut cloned) = result;
+                    ::test::black_box(cloned);
+                });
+            }
+            #[test]
+            fn test() {
+                let buffer = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]);
+                let result = super::$fn_name(&buffer[..], |c| {
+                    assert_eq!(b"1234567890", c);
+                });
+                assert_eq!(&b"123"[..], result.as_slice());
+            }
+        }
+    };
+}
+
+test_and_bench!(split_v1);
+test_and_bench!(split_v2, split);
+
+#[bench]
+fn bench_buffer_split_v3(b: &mut ::test::Bencher) {
+    let vec: Vec<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n"[..]);
+    b.iter(|| {
+        let mut cloned = vec.clone();
+        split_v3(&mut cloned, |c| {
+            ::test::black_box(c);
+        });
+        ::test::black_box(cloned);
+    });
+}
+
+#[test]
+fn test_buffer_split_v3() {
+    let mut buffer = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]);
+    split_v3(&mut buffer, |c| {
+        assert_eq!(b"1234567890", c);
+    });
+    assert_eq!(&b"123"[..], buffer.as_slice());
 }

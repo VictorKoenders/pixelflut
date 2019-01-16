@@ -16,61 +16,6 @@ pub struct Screen {
 pub struct Screen {
     _hidden: (),
 }
-
-#[bench]
-fn bench_set_pixel(b: &mut test::Bencher) {
-    let mut _screen = Screen::init();
-    b.iter(|| {
-        for r in 0..10 {
-            for g in 0..10 {
-                for b in 0..10 {
-                    for x in 0..10 {
-                        for y in 0..10 {
-                            Screen::set_pixel_v1((x, y), (r, g, b));
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-#[bench]
-fn bench_set_pixel_v2(b: &mut test::Bencher) {
-    let mut _screen = Screen::init();
-    b.iter(|| {
-        for r in 0..10 {
-            for g in 0..10 {
-                for b in 0..10 {
-                    for x in 0..10 {
-                        for y in 0..10 {
-                            Screen::set_pixel_v2((x, y), [r, g, b]);
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-#[bench]
-fn bench_set_pixel_v3(b: &mut test::Bencher) {
-    let mut _screen = Screen::init();
-    b.iter(|| {
-        for r in 0..10 {
-            for g in 0..10 {
-                for b in 0..10 {
-                    for x in 0..10 {
-                        for y in 0..10 {
-                            Screen::set_pixel((x, y), (r, g, b));
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
 impl Screen {
     #[cfg(test)]
     pub fn set_pixel_v1((x, y): (usize, usize), (red, green, blue): (u8, u8, u8)) {
@@ -146,5 +91,39 @@ impl Screen {
     }
 
     #[cfg(not(target_os = "linux"))]
-    pub fn render(&self) {}
+    pub fn render(&mut self) {}
 }
+
+macro_rules! bench_set_pixel {
+    ($fn_name:ident, $bracket_style:tt) => {
+        pub mod $fn_name {
+            #[bench]
+            pub fn bench(b: &mut test::Bencher) {
+                let mut _screen = super::Screen::init();
+                b.iter(|| {
+                    for r in 0..10 {
+                        for g in 0..10 {
+                            for b in 0..10 {
+                                for x in 0..10 {
+                                    for y in 0..10 {
+                                        bench_set_pixel!(impl $fn_name, $bracket_style x, y, r, g, b);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    };
+    (impl $fn_name:ident () $x:expr, $y:expr, $r:expr, $g:expr, $b:expr) => {
+        super::Screen::$fn_name(($x, $y), ($r, $g, $b))
+    };
+    (impl $fn_name:ident [] $x:expr, $y:expr, $r:expr, $g:expr, $b:expr) => {
+        super::Screen::$fn_name(($x, $y), [$r, $g, $b])
+    };
+}
+
+bench_set_pixel!(set_pixel_v1, ());
+bench_set_pixel!(set_pixel_v2, []);
+bench_set_pixel!(set_pixel_v3, ());
