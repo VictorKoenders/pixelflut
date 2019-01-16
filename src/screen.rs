@@ -96,7 +96,10 @@ impl Screen {
 
 macro_rules! bench_set_pixel {
     ($fn_name:ident, $bracket_style:tt) => {
-        pub mod $fn_name {
+        bench_set_pixel!($fn_name, $fn_name, $bracket_style);
+    };
+    ($mod_name:ident, $fn_name:ident, $bracket_style:tt) => {
+        pub mod $mod_name {
             #[bench]
             pub fn bench(b: &mut test::Bencher) {
                 let mut _screen = super::Screen::init();
@@ -106,7 +109,7 @@ macro_rules! bench_set_pixel {
                             for b in 0..10 {
                                 for x in 0..10 {
                                     for y in 0..10 {
-                                        bench_set_pixel!(impl $fn_name, $bracket_style x, y, r, g, b);
+                                        bench_set_pixel!(impl $fn_name, $bracket_style, x, y, r, g, b);
                                     }
                                 }
                             }
@@ -116,14 +119,15 @@ macro_rules! bench_set_pixel {
             }
         }
     };
-    (impl $fn_name:ident () $x:expr, $y:expr, $r:expr, $g:expr, $b:expr) => {
+    (impl $fn_name:ident, (), $x:expr, $y:expr, $r:expr, $g:expr, $b:expr) => {
         super::Screen::$fn_name(($x, $y), ($r, $g, $b))
     };
-    (impl $fn_name:ident [] $x:expr, $y:expr, $r:expr, $g:expr, $b:expr) => {
+    (impl $fn_name:ident, [], $x:expr, $y:expr, $r:expr, $g:expr, $b:expr) => {
         super::Screen::$fn_name(($x, $y), [$r, $g, $b])
     };
 }
 
 bench_set_pixel!(set_pixel_v1, ());
 bench_set_pixel!(set_pixel_v2, []);
-bench_set_pixel!(set_pixel_v3, ());
+bench_set_pixel!(set_pixel_v3, set_pixel, ());
+

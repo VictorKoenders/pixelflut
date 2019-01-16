@@ -244,3 +244,4 @@ fn test_buffer_split_v3() {
     });
     assert_eq!(&b"123"[..], buffer.as_slice());
 }
+
