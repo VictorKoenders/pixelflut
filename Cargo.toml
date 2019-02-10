@@ -14,7 +14,7 @@ time = "0.1"
 tokio = "0.1"
 
 [dev-dependencies]
-proptest = "0.8"
+proptest = "0.9"
 
 [profile.release]
 lto = true

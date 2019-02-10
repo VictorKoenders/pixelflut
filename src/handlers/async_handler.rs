@@ -9,13 +9,11 @@ use tokio::prelude::*;
 use tokio::timer::Interval;
 
 pub fn main_loop(host: IpAddr, port: u16) {
-    loop {
-        tokio::run(future::lazy(move || {
-            run(host, port);
-            run_render_loop();
-            Ok(())
-        }));
-    }
+    tokio::run(future::lazy(move || {
+        run(host, port);
+        run_render_loop();
+        Ok(())
+    }));
 }
 
 fn run_render_loop() {
@@ -28,12 +26,17 @@ fn run_render_loop() {
             .for_each(move |_| {
                 screen.render();
                 Ok(())
+            })
+            .and_then(|_| {
+                eprintln!("Render loop done, please restart");
+                Ok(())
             }),
     );
 }
 
 fn run(host: IpAddr, port: u16) {
     let listener = TcpListener::bind(&SocketAddr::new(host, port)).expect("Could not bind server");
+    println!("Listening on {:?}", SocketAddr::new(host, port));
     tokio::spawn(
         listener
             .incoming()
@@ -43,6 +46,10 @@ fn run(host: IpAddr, port: u16) {
             })
             .for_each(move |socket| {
                 tokio::spawn(AsyncClient::new(socket).map_err(|_| ()));
+                Ok(())
+            })
+            .and_then(|_| {
+                eprintln!("Listener loop ended, please restart");
                 Ok(())
             }),
     );
@@ -68,6 +75,11 @@ impl Future for AsyncClient {
         try_ready!(self.lines.poll_flush());
         while let Async::Ready(line) = self.lines.poll()? {
             if let Some(line) = line {
+                let line = if line.last() == Some(&b'\r') {
+                    &line[..line.len() - 1]
+                } else {
+                    &line[..]
+                };
                 if let Ok(response) = Client.handle_message_response(&line) {
                     if !response.is_empty() {
                         self.lines.buffer(response);

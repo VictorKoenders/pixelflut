@@ -109,7 +109,15 @@ macro_rules! bench_set_pixel {
                             for b in 0..10 {
                                 for x in 0..10 {
                                     for y in 0..10 {
-                                        bench_set_pixel!(impl $fn_name, $bracket_style, x, y, r, g, b);
+                                        bench_set_pixel!(
+                                            impl $fn_name,
+                                            $bracket_style,
+                                            x,
+                                            y,
+                                            r,
+                                            g,
+                                            b
+                                        );
                                     }
                                 }
                             }
@@ -130,4 +138,3 @@ macro_rules! bench_set_pixel {
 bench_set_pixel!(set_pixel_v1, ());
 bench_set_pixel!(set_pixel_v2, []);
 bench_set_pixel!(set_pixel_v3, set_pixel, ());
-
