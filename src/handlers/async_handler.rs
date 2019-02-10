@@ -3,35 +3,25 @@ use crate::lines::Lines;
 use crate::screen::Screen;
 use futures::{try_ready, Future, Poll, Stream};
 use std::net::{IpAddr, SocketAddr};
+use std::thread;
 use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
-use tokio::timer::Interval;
 
 pub fn main_loop(host: IpAddr, port: u16) {
+    let screen = Screen::init();
+    thread::spawn(move || run_render_loop(screen));
     tokio::run(future::lazy(move || {
         run(host, port);
-        run_render_loop();
         Ok(())
     }));
 }
 
-fn run_render_loop() {
-    let mut screen = Screen::init();
-    tokio::spawn(
-        Interval::new_interval(Duration::from_millis(33))
-            .map_err(|e| {
-                eprintln!("Screen failed to update: {:?}", e);
-            })
-            .for_each(move |_| {
-                screen.render();
-                Ok(())
-            })
-            .and_then(|_| {
-                eprintln!("Render loop done, please restart");
-                Ok(())
-            }),
-    );
+fn run_render_loop(mut screen: Screen) {
+    loop {
+        thread::sleep(Duration::from_millis(33));
+        screen.render();
+    }
 }
 
 fn run(host: IpAddr, port: u16) {
