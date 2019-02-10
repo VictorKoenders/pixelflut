@@ -77,7 +77,7 @@ impl Future for AsyncClient {
                     }
                 }
             } else {
-                return Ok(Async::NotReady);
+                return Ok(Async::Ready(()));
             }
         }
 
