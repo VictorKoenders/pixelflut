@@ -1,7 +1,7 @@
 use crate::client::Client;
 use crate::lines::Lines;
 use crate::screen::Screen;
-use futures::{try_ready, Future, Poll, Stream};
+use futures::{Future, Poll, Stream};
 use std::net::{IpAddr, SocketAddr};
 use std::thread;
 use std::time::Duration;
@@ -62,7 +62,7 @@ impl Future for AsyncClient {
     type Error = failure::Error;
 
     fn poll(&mut self) -> Poll<(), failure::Error> {
-        try_ready!(self.lines.poll_flush());
+        self.lines.poll_flush()?;
         while let Async::Ready(line) = self.lines.poll()? {
             if let Some(line) = line {
                 let line = if line.last() == Some(&b'\r') {
@@ -73,11 +73,11 @@ impl Future for AsyncClient {
                 if let Ok(response) = Client.handle_message_response(&line) {
                     if !response.is_empty() {
                         self.lines.buffer(response);
-                        try_ready!(self.lines.poll_flush());
+                        self.lines.poll_flush()?;
                     }
                 }
             } else {
-                return Ok(Async::Ready(()));
+                return Ok(Async::NotReady);
             }
         }
 
