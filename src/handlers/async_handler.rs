@@ -3,25 +3,44 @@ use crate::lines::Lines;
 use crate::screen::Screen;
 use futures::{Future, Poll, Stream};
 use std::net::{IpAddr, SocketAddr};
-use std::thread;
 use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
+use tokio::timer::Interval;
 
 pub fn main_loop(host: IpAddr, port: u16) {
-    let screen = Screen::init();
-    thread::spawn(move || run_render_loop(screen));
+    // let screen = Screen::init();
+    // thread::spawn(move || run_render_loop(screen));
     tokio::run(future::lazy(move || {
+        run_render_loop();
         run(host, port);
         Ok(())
     }));
 }
 
-fn run_render_loop(mut screen: Screen) {
+/* fn run_render_loop(mut screen: Screen) {
     loop {
         thread::sleep(Duration::from_millis(33));
         screen.render();
     }
+} */
+
+fn run_render_loop() {
+    let mut screen = Screen::init();
+    tokio::spawn(
+        Interval::new_interval(Duration::from_millis(33))
+            .map_err(|e| {
+                eprintln!("Screen failed to update: {:?}", e);
+            })
+            .for_each(move |_| {
+                screen.render();
+                Ok(())
+            })
+            .and_then(|_| {
+                eprintln!("Render loop done, please restart");
+                Ok(())
+            }),
+    );
 }
 
 fn run(host: IpAddr, port: u16) {
@@ -65,11 +84,6 @@ impl Future for AsyncClient {
         self.lines.poll_flush()?;
         while let Async::Ready(line) = self.lines.poll()? {
             if let Some(line) = line {
-                let line = if line.last() == Some(&b'\r') {
-                    &line[..line.len() - 1]
-                } else {
-                    &line[..]
-                };
                 if let Ok(response) = Client.handle_message_response(&line) {
                     if !response.is_empty() {
                         self.lines.buffer(response);

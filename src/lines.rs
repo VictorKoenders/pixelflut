@@ -96,7 +96,7 @@ impl Stream for Lines {
                 pos = Some((index, 1));
                 break;
             }
-            if *byte == b'\r' && index + 1 < self.rd.len() && self.rd[index] == b'\n' {
+            if *byte == b'\r' && index + 1 < self.rd.len() && self.rd[index + 1] == b'\n' {
                 pos = Some((index, 2));
                 break;
             }
@@ -105,9 +105,7 @@ impl Stream for Lines {
         if let Some((pos, length)) = pos {
             // Remove the line from the read buffer and set it to `line`.
             let mut line = self.rd.split_to(pos + length);
-
-            // Drop the trailing \n or \r\n
-            line.split_off(pos - (length - 1));
+            line.split_off(pos);
 
             // Return the line
             return Ok(Async::Ready(Some(line)));
