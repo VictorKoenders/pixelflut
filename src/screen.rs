@@ -12,10 +12,12 @@ static mut FRAME_BYTES_PER_PIXEL: usize = 0;
 pub struct Screen {
     buffer: Framebuffer,
 }
+
 #[cfg(not(target_os = "linux"))]
 pub struct Screen {
     _hidden: (),
 }
+
 impl Screen {
     #[cfg(test)]
     pub fn set_pixel_v1((x, y): (usize, usize), (red, green, blue): (u8, u8, u8)) {
@@ -31,6 +33,7 @@ impl Screen {
     }
 
     #[cfg(test)]
+    #[inline]
     pub fn set_pixel_v2((x, y): (usize, usize), bgr: [u8; 3]) {
         unsafe {
             if x >= FRAME_WIDTH || y >= FRAME_HEIGHT {
