@@ -9,7 +9,6 @@ extern crate test;
 
 mod client;
 mod handlers;
-mod lines;
 mod screen;
 mod utils;
 

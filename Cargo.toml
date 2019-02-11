@@ -11,7 +11,8 @@ failure = "0.1"
 futures = "0.1"
 num_cpus = "1.9"
 time = "0.1"
-tokio = "0.1"
+mio = { version = "0.6", default-features = false }
+hashbrown = { version = "0.1", features = ["nightly"] }
 
 [dev-dependencies]
 proptest = "0.9"
