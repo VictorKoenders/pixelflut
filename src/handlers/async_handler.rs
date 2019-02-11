@@ -101,7 +101,7 @@ impl Client {
                     self.stream.write_all(result)?;
                 }
 
-                self.buffer.drain(..index);
+                self.buffer.drain(..end_of_line + 1);
             }
         }
     }
