@@ -16,6 +16,8 @@ hashbrown = { version = "0.1", features = ["nightly"] }
 
 [dev-dependencies]
 proptest = "0.9"
+lazy_static = "*"
+rand = "*"
 
 [profile.release]
 lto = true

@@ -1,5 +1,9 @@
 #[cfg(target_os = "linux")]
 use framebuffer::Framebuffer;
+#[cfg(test)]
+use lazy_static::lazy_static;
+#[cfg(test)]
+use std::sync::{Mutex, MutexGuard};
 
 static mut FRAME: Vec<u8> = Vec::new();
 static mut FRAME_WIDTH: usize = 0;
@@ -7,6 +11,10 @@ static mut FRAME_HEIGHT: usize = 0;
 static mut FRAME_SIZE_MESSAGE: Vec<u8> = Vec::new();
 static mut FRAME_LINE_LENGTH: usize = 0;
 static mut FRAME_BYTES_PER_PIXEL: usize = 0;
+#[cfg(test)]
+lazy_static! {
+    static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
+}
 
 #[cfg(target_os = "linux")]
 pub struct Screen {
@@ -19,6 +27,31 @@ pub struct Screen {
 }
 
 impl Screen {
+    #[cfg(test)]
+    pub fn get_pixel_at(x: usize, y: usize) -> &'static [u8] {
+         unsafe {
+            if x >= FRAME_WIDTH || y >= FRAME_HEIGHT {
+                panic!("Out of boundaries");
+            }
+            let start_index = (y * FRAME_LINE_LENGTH + x * FRAME_BYTES_PER_PIXEL) as usize;
+            &FRAME[start_index..start_index + 3]
+        }
+    }
+
+    #[cfg(test)]
+    pub fn all(slice: &[u8; 3]) -> bool {
+        unsafe {
+            for i in 0..FRAME.len() / 3 {
+                let i = i * 3;
+                if &FRAME[i..i+3] != &slice[..] {
+                    println!("position {} does not match: {:?} (expected {:?})", i, &FRAME[i..i+3], &slice[..]);
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
     #[cfg(test)]
     pub fn set_pixel_v1((x, y): (usize, usize), (red, green, blue): (u8, u8, u8)) {
         unsafe {
@@ -58,6 +91,11 @@ impl Screen {
 
     pub fn get_screen_size_message() -> &'static [u8] {
         unsafe { &FRAME_SIZE_MESSAGE }
+    }
+
+    #[cfg(test)]
+    pub fn lock() -> MutexGuard<'static, ()> {
+        TEST_MUTEX.lock().expect("Could not lock mutex")
     }
 
     #[cfg(target_os = "linux")]
@@ -105,6 +143,7 @@ macro_rules! bench_set_pixel {
         pub mod $mod_name {
             #[bench]
             pub fn bench(b: &mut test::Bencher) {
+                let _lock = super::Screen::lock();
                 let mut _screen = super::Screen::init();
                 b.iter(|| {
                     for r in 0..10 {
