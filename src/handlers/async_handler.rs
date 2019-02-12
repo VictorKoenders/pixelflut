@@ -5,7 +5,7 @@ use mio::{Events, Poll, PollOpt, Ready, Token};
 use std::io::{Error, ErrorKind, Read, Write};
 use std::net::IpAddr;
 
-pub fn main_loop(host: IpAddr, port: u16) {
+pub fn main_loop(host: IpAddr, port: u16, interrupter: &super::Interrupter) {
     let poll = Poll::new().expect("Could not create poll");
     let mut clients = HashMap::<Token, Client>::new();
     let mut buffer = [0u8; 1024];
@@ -20,8 +20,9 @@ pub fn main_loop(host: IpAddr, port: u16) {
     poll.register(&listener, server_token, Ready::readable(), PollOpt::edge())
         .expect("Could not register listener");
 
-    loop {
-        poll.poll(&mut events, None).unwrap();
+    while interrupter.is_running() {
+        poll.poll(&mut events, Some(std::time::Duration::from_millis(100)))
+            .unwrap();
         for event in events.iter() {
             if event.token() == server_token {
                 while let Ok((stream, _addr)) = listener.accept() {
@@ -101,7 +102,7 @@ impl Client {
                     self.stream.write_all(result)?;
                 }
 
-                self.buffer.drain(..end_of_line + 1);
+                self.buffer.drain(..=end_of_line);
             }
         }
     }

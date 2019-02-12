@@ -6,7 +6,7 @@ use std::net::{IpAddr, TcpListener, TcpStream};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
 
-pub fn main_loop(host: IpAddr, port: u16) {
+pub fn main_loop(host: IpAddr, port: u16, interrupter: &super::Interrupter) {
     let mut screen = Screen::init();
 
     spawn(move || render_loop(&mut screen));
@@ -15,7 +15,7 @@ pub fn main_loop(host: IpAddr, port: u16) {
         .unwrap_or_else(|e| panic!("Could not listen on {}:{}: {:?}", host, port, e));
     println!("Listening on {}", listener.local_addr().unwrap());
 
-    loop {
+    while interrupter.is_running() {
         let (socket, _) = listener
             .accept()
             .expect("Could not accept new TCP connection");

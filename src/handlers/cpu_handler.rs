@@ -11,6 +11,7 @@ use time;
 pub struct Handle {
     counter: Arc<AtomicUsize>,
     sender: Sender<HandlerNotify>,
+    handle: std::thread::JoinHandle<()>,
 }
 
 pub enum HandlerNotify {
@@ -18,14 +19,22 @@ pub enum HandlerNotify {
 }
 
 impl Handle {
-    pub fn new() -> Handle {
+    pub fn new(interrupter: Box<super::Interrupter>) -> Handle {
         let (sender, receiver) = channel();
         let counter = Arc::new(AtomicUsize::new(0));
         let counter_clone = counter.clone();
-        spawn(move || {
-            run(&receiver, &counter_clone);
+        let handle = spawn(move || {
+            run(&receiver, &counter_clone, interrupter);
         });
-        Handle { counter, sender }
+        Handle {
+            counter,
+            sender,
+            handle,
+        }
+    }
+
+    pub fn join(self) {
+        self.handle.join().expect("Could not wait for handle");
     }
 
     pub fn client_count(&self) -> usize {
@@ -39,7 +48,11 @@ impl Handle {
     }
 }
 
-fn run(receiver: &Receiver<HandlerNotify>, counter: &Arc<AtomicUsize>) {
+fn run(
+    receiver: &Receiver<HandlerNotify>,
+    counter: &Arc<AtomicUsize>,
+    interrupter: Box<super::Interrupter>,
+) {
     // The largest message that we support is: (nn = \r\n)
     // 00000000011111111112
     // 12345678901234567890
@@ -48,7 +61,7 @@ fn run(receiver: &Receiver<HandlerNotify>, counter: &Arc<AtomicUsize>) {
     let mut buffer = [0u8; 19];
 
     let mut clients: Vec<(TcpStream, Vec<u8>)> = Vec::new();
-    loop {
+    while interrupter.is_running() {
         match receiver.try_recv() {
             Ok(HandlerNotify::AddClient(client)) => {
                 if let Ok(()) = client.set_nonblocking(true) {
@@ -100,7 +113,7 @@ fn run(receiver: &Receiver<HandlerNotify>, counter: &Arc<AtomicUsize>) {
 
 const FRAME_DURATION_NS: u64 = 1_000_000_000 / 30;
 
-pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize) {
+pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize, interrupter: &super::Interrupter) {
     let listener = TcpListener::bind((host, port)).expect("Could not bind on port 1234");
     let mut screen = Screen::init();
 
@@ -117,11 +130,11 @@ pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize) {
     let handler_count = num_cpus - 1;
     let mut handles = Vec::with_capacity(handler_count);
     for _ in 0..handler_count {
-        handles.push(Handle::new());
+        handles.push(Handle::new(interrupter.clone()));
     }
 
     let mut target_next_frame_time = time::precise_time_ns();
-    loop {
+    while interrupter.is_running() {
         while target_next_frame_time > time::precise_time_ns() {
             match listener.accept() {
                 Ok((client, _)) => {
@@ -142,6 +155,10 @@ pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize) {
         }
         target_next_frame_time = time::precise_time_ns() + FRAME_DURATION_NS;
         screen.render();
+    }
+
+    for handle in handles {
+        handle.join();
     }
 }
 

@@ -8,3 +8,19 @@ pub mod async_handler;
 
 /// a handler that spawns a new thread for each incoming connection
 pub mod max_threads;
+
+pub trait Interrupter: std::marker::Send {
+    fn is_running(&self) -> bool;
+    fn clone(&self) -> Box<Interrupter>;
+}
+
+pub struct RunIndefinitely;
+
+impl Interrupter for RunIndefinitely {
+    fn is_running(&self) -> bool {
+        true
+    }
+    fn clone(&self) -> Box<Interrupter> {
+        Box::new(RunIndefinitely)
+    }
+}
