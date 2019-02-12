@@ -29,7 +29,7 @@ pub struct Screen {
 impl Screen {
     #[cfg(test)]
     pub fn get_pixel_at(x: usize, y: usize) -> &'static [u8] {
-         unsafe {
+        unsafe {
             if x >= FRAME_WIDTH || y >= FRAME_HEIGHT {
                 panic!("Out of boundaries");
             }
@@ -43,8 +43,13 @@ impl Screen {
         unsafe {
             for i in 0..FRAME.len() / 3 {
                 let i = i * 3;
-                if &FRAME[i..i+3] != &slice[..] {
-                    println!("position {} does not match: {:?} (expected {:?})", i, &FRAME[i..i+3], &slice[..]);
+                if &FRAME[i..i + 3] != &slice[..] {
+                    println!(
+                        "position {} does not match: {:?} (expected {:?})",
+                        i,
+                        &FRAME[i..i + 3],
+                        &slice[..]
+                    );
                     return false;
                 }
             }

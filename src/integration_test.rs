@@ -1,10 +1,10 @@
+use crate::handlers::{async_handler, cpu_handler, max_threads, Interrupter};
+use crate::screen::Screen;
+use rand::{thread_rng, Rng};
+use std::io::{Read, Write};
+use std::net::TcpStream;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use rand::{Rng, thread_rng};
-use crate::handlers::{Interrupter, cpu_handler, max_threads, async_handler};
-use crate::screen::Screen;
-use std::net::TcpStream;
-use std::io::{Read, Write};
 
 #[test]
 pub fn cpu_bound() {
@@ -16,23 +16,23 @@ pub fn cpu_bound() {
 
 #[test]
 pub fn max_threads() {
-    do_test(|interrupt, port| {
-        max_threads::main_loop([127, 0, 0, 1].into(), port, interrupt)
-    });
+    do_test(|interrupt, port| max_threads::main_loop([127, 0, 0, 1].into(), port, interrupt));
 }
 
 #[test]
 pub fn r#async() {
-    do_test(|interrupt, port| {
-        async_handler::main_loop([127, 0, 0, 1].into(), port, interrupt)
-    });
+    do_test(|interrupt, port| async_handler::main_loop([127, 0, 0, 1].into(), port, interrupt));
 }
 
 fn do_test<F>(f: F)
-    where F: Fn(&Interrupter, u16) + std::marker::Send + 'static {
+where
+    F: Fn(&Interrupter, u16) + std::marker::Send + 'static,
+{
     let _lock = Screen::lock();
     let mut rng = thread_rng();
-    let interrupter = TestInterrupter { val: Arc::new(AtomicBool::new(true)) };
+    let interrupter = TestInterrupter {
+        val: Arc::new(AtomicBool::new(true)),
+    };
     let interrupter_clone = interrupter.clone();
     let port = rng.gen_range(1500, 2500);
 
@@ -43,9 +43,13 @@ fn do_test<F>(f: F)
     std::thread::sleep(std::time::Duration::from_millis(100));
 
     let mut stream = TcpStream::connect(("127.0.0.1", port)).expect("Could not connect to server");
-    stream.write_all(b"SIZE\n").expect("Could not send SIZE command");
+    stream
+        .write_all(b"SIZE\n")
+        .expect("Could not send SIZE command");
     let mut buffer = [0u8; 1024];
-    let length = stream.read(&mut buffer[..]).expect("Could not read SIZE response");
+    let length = stream
+        .read(&mut buffer[..])
+        .expect("Could not read SIZE response");
     let response = std::str::from_utf8(&buffer[..length]).expect("Could not parse SIZE response");
     let mut split = response.split(' ').map(|s| s.trim());
     let _ = split.next();
@@ -56,9 +60,15 @@ fn do_test<F>(f: F)
     println!("Screen size {}x{}", width, height);
 
     assert_eq!(Screen::get_pixel_at(50, 50), &[0, 0, 0]);
-    for (command, expected) in &[("FF0000", [0, 0, 255]), ("00FF00", [0, 255, 0]), ("0000FF", [255, 0, 0])] {
+    for (command, expected) in &[
+        ("FF0000", [0, 0, 255]),
+        ("00FF00", [0, 255, 0]),
+        ("0000FF", [255, 0, 0]),
+    ] {
         let command = format!("PX {} {} {}\n", 50, 50, command);
-        stream.write_all(command.as_bytes()).expect("Could not send PX command");
+        stream
+            .write_all(command.as_bytes())
+            .expect("Could not send PX command");
         std::thread::sleep(std::time::Duration::from_millis(100));
         assert_eq!(Screen::get_pixel_at(50, 50), &expected[..]);
     }
@@ -68,7 +78,9 @@ fn do_test<F>(f: F)
     for x in 0..width {
         for y in 0..height {
             let command = format!("PX {} {} FFFFFF\n", x, y);
-            stream.write_all(command.as_bytes()).expect("Could not send PX command");
+            stream
+                .write_all(command.as_bytes())
+                .expect("Could not send PX command");
         }
     }
     // Give the process some time to handle the data
@@ -82,13 +94,16 @@ fn do_test<F>(f: F)
 }
 
 struct TestInterrupter {
-    val: Arc<AtomicBool>
+    val: Arc<AtomicBool>,
 }
 
 impl Interrupter for TestInterrupter {
-    fn is_running(&self) -> bool { self.val.load(Ordering::Relaxed) }
-    fn clone(&self) -> Box<crate::handlers::Interrupter> { 
-        Box::new(TestInterrupter { val: Arc::clone(&self.val) })
+    fn is_running(&self) -> bool {
+        self.val.load(Ordering::Relaxed)
+    }
+    fn clone(&self) -> Box<crate::handlers::Interrupter> {
+        Box::new(TestInterrupter {
+            val: Arc::clone(&self.val),
+        })
     }
 }
-
