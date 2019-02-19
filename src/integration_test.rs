@@ -21,7 +21,7 @@ pub fn max_threads() {
 
 #[test]
 pub fn r#async() {
-    do_test(|interrupt, port| async_handler::main_loop([127, 0, 0, 1].into(), port, interrupt));
+    do_test(|interrupt, port| async_handler::main_loop([127, 0, 0, 1].into(), port, 2, interrupt));
 }
 
 fn do_test<F>(f: F)

@@ -69,7 +69,7 @@ impl Worker {
 
         poll.register(
             &receiver,
-            Token(usize::max_value()),
+            Token(0),
             Ready::readable(),
             PollOpt::edge(),
         )
@@ -79,14 +79,13 @@ impl Worker {
             poll.poll(&mut events, Some(std::time::Duration::from_millis(100)))
                 .unwrap();
             for event in events.iter() {
-                if event.token() == Token(usize::max_value()) {
+                if event.token() == Token(0) {
                     while let Ok(task) = receiver.try_recv() {
                         let next_token = match available_client_indices.pop() {
                             Some(t) => t,
                             None => {
-                                let index = clients.len();
                                 clients.push(None);
-                                index
+                                clients.len()
                             }
                         };
                         poll.register(
@@ -96,16 +95,16 @@ impl Worker {
                             PollOpt::edge(),
                         )
                         .expect("Could not register client stream");
-                        clients[next_token] = Some(Client::new(task.stream));
+                        clients[next_token - 1] = Some(Client::new(task.stream));
                     }
                 } else if {
-                    let client = &mut clients[event.token().0].as_mut().unwrap();
+                    let client = &mut clients[event.token().0 - 1].as_mut().unwrap();
                     client.read(&mut buffer)
                 }
                 .is_err()
                 {
                     available_client_indices.push(event.token().0);
-                    clients[event.token().0] = None;
+                    clients[event.token().0 - 1] = None;
                 }
             }
         }
