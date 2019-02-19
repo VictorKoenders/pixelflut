@@ -60,12 +60,12 @@ fn run(
     // So we only need to have a buffer of 19 bytes
     let mut buffer = [0u8; 19];
 
-    let mut clients: Vec<(TcpStream, Vec<u8>)> = Vec::new();
+    let mut clients: Vec<(TcpStream, Vec<u8>)> = Vec::with_capacity(100_000);
     while interrupter.is_running() {
         match receiver.try_recv() {
             Ok(HandlerNotify::AddClient(client)) => {
                 if let Ok(()) = client.set_nonblocking(true) {
-                    clients.push((client, Vec::new()));
+                    clients.push((client, Vec::with_capacity(100_000)));
                     counter.fetch_add(1, Ordering::Relaxed);
                 }
             }

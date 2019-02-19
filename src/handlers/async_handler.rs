@@ -64,8 +64,8 @@ impl Worker {
         let poll = Poll::new().expect("Could not create poll");
         let mut buffer = [0u8; 1024];
         let mut events = Events::with_capacity(1024);
-        let mut clients = Vec::<Option<Client>>::new();
-        let mut available_client_indices = Vec::<usize>::new();
+        let mut clients = Vec::<Option<Client>>::with_capacity(100_000);
+        let mut available_client_indices = Vec::<usize>::with_capacity(100_000);
 
         poll.register(
             &receiver,

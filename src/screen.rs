@@ -1,9 +1,5 @@
 #[cfg(target_os = "linux")]
 use framebuffer::Framebuffer;
-#[cfg(test)]
-use lazy_static::lazy_static;
-#[cfg(test)]
-use std::sync::{Mutex, MutexGuard};
 
 static mut FRAME: Vec<u8> = Vec::new();
 static mut FRAME_WIDTH: usize = 0;
@@ -11,10 +7,6 @@ static mut FRAME_HEIGHT: usize = 0;
 static mut FRAME_SIZE_MESSAGE: Vec<u8> = Vec::new();
 static mut FRAME_LINE_LENGTH: usize = 0;
 static mut FRAME_BYTES_PER_PIXEL: usize = 0;
-#[cfg(test)]
-lazy_static! {
-    static ref TEST_MUTEX: Mutex<()> = Mutex::new(());
-}
 
 #[cfg(target_os = "linux")]
 pub struct Screen {
@@ -98,11 +90,6 @@ impl Screen {
         unsafe { &FRAME_SIZE_MESSAGE }
     }
 
-    #[cfg(test)]
-    pub fn lock() -> MutexGuard<'static, ()> {
-        TEST_MUTEX.lock().expect("Could not lock mutex")
-    }
-
     #[cfg(target_os = "linux")]
     pub fn init() -> Screen {
         let buffer = Framebuffer::new("/dev/fb0").expect("Could not open frame buffer");
@@ -148,7 +135,6 @@ macro_rules! bench_set_pixel {
         pub mod $mod_name {
             #[bench]
             pub fn bench(b: &mut test::Bencher) {
-                let _lock = super::Screen::lock();
                 let mut _screen = super::Screen::init();
                 b.iter(|| {
                     for r in 0..10 {

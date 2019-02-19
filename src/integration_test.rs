@@ -28,7 +28,7 @@ fn do_test<F>(f: F)
 where
     F: Fn(&Interrupter, u16) + std::marker::Send + 'static,
 {
-    let _lock = Screen::lock();
+    Screen::init();
     let mut rng = thread_rng();
     let interrupter = TestInterrupter {
         val: Arc::new(AtomicBool::new(true)),
