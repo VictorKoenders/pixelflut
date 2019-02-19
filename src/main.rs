@@ -47,7 +47,13 @@ fn main() {
         .subcommand(SubCommand::with_name("max_threads")
             .about("Spawns a new thread for each incoming connection."))
         .subcommand(SubCommand::with_name("async")
-            .about("Uses async networking to let the OS push messages to the application without waiting for it."))
+            .about("Uses async networking to let the OS push messages to the application without waiting for it.")
+            .arg(Arg::with_name("num_cpus")
+                .short("c")
+                .long("num_cpus")
+                .takes_value(true)
+                .help(&cpu_str))
+            )
         .get_matches();
 
     let host: std::net::IpAddr = matches
@@ -75,7 +81,17 @@ fn main() {
             handlers::cpu_handler::main_loop(host, port, cpus, &handlers::RunIndefinitely);
         }
         "max_threads" => handlers::max_threads::main_loop(host, port, &handlers::RunIndefinitely),
-        "async" => handlers::async_handler::main_loop(host, port, &handlers::RunIndefinitely),
+        "async" => {
+            let mut cpus: usize = subcommand_matches
+                .and_then(|m| m.value_of("num_cpus"))
+                .unwrap_or("0")
+                .parse()
+                .expect("num_cpus is invalid");
+            if cpus == 0 || cpus > num_cpus::get() {
+                cpus = num_cpus::get();
+            }
+            handlers::async_handler::main_loop(host, port, cpus, &handlers::RunIndefinitely);
+        }
         _ => println!(
             "Missing subcommand, run `{} help` for more information",
             std::env::args().next().unwrap()

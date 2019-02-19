@@ -1,51 +1,119 @@
 use crate::screen::Screen;
-use hashbrown::HashMap;
 use mio::net::{TcpListener, TcpStream};
 use mio::{Events, Poll, PollOpt, Ready, Token};
+use mio_extras::channel::{channel, Receiver, Sender};
 use std::io::{Error, ErrorKind, Read, Write};
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 
-pub fn main_loop(host: IpAddr, port: u16, interrupter: &super::Interrupter) {
+pub fn main_loop(
+    host: IpAddr,
+    port: u16,
+    worker_pool_size: usize,
+    interrupter: &super::Interrupter,
+) {
     let poll = Poll::new().expect("Could not create poll");
-    let mut clients = HashMap::<Token, Client>::new();
-    let mut buffer = [0u8; 1024];
+    // let mut clients = HashMap::<Token, Client>::new();
     let mut events = Events::with_capacity(1024);
     let listener = TcpListener::bind(&(host, port).into()).expect("Could not bind listener");
-    let mut token_generator = TokenGenerator::new();
-    let server_token = token_generator.next();
     let screen = Screen::init();
+
+    let mut threads = Vec::with_capacity(worker_pool_size);
+
+    for _ in 0..worker_pool_size {
+        threads.push(Worker::spawn(interrupter.clone()));
+    }
 
     std::thread::spawn(move || screen_render_loop(screen));
 
-    poll.register(&listener, server_token, Ready::readable(), PollOpt::edge())
+    poll.register(&listener, Token(1), Ready::readable(), PollOpt::edge())
         .expect("Could not register listener");
+
+    let mut next_worker_index = 0;
 
     while interrupter.is_running() {
         poll.poll(&mut events, Some(std::time::Duration::from_millis(100)))
             .unwrap();
-        for event in events.iter() {
-            if event.token() == server_token {
-                while let Ok((stream, _addr)) = listener.accept() {
-                    let token = token_generator.next();
-                    poll.register(&stream, token, Ready::readable(), PollOpt::edge())
-                        .expect("Could not register client");
-                    clients.insert(token, Client::new(stream));
-                }
-            } else {
-                let mut should_remove = false;
-                if let Some(client) = clients.get_mut(&event.token()) {
-                    if client.read(&mut buffer).is_err() {
-                        should_remove = true;
-                    }
-                }
+        for _ in events.iter() {
+            while let Ok((stream, addr)) = listener.accept() {
+                threads[next_worker_index].send(stream, addr);
 
-                if should_remove {
-                    clients.remove(&event.token());
-                    token_generator.release(event.token());
+                next_worker_index = (next_worker_index + 1) % worker_pool_size;
+            }
+        }
+    }
+}
+
+struct Worker(Sender<WorkerTask>);
+
+impl Worker {
+    pub fn spawn(interrupter: Box<super::Interrupter>) -> Worker {
+        let (sender, receiver) = channel();
+        std::thread::spawn(move || {
+            Worker::run(receiver, interrupter);
+        });
+        Worker(sender)
+    }
+
+    pub fn send(&self, stream: TcpStream, _addr: SocketAddr) {
+        self.0
+            .send(WorkerTask { stream })
+            .expect("Could not send incoming tcp stream to worker");
+    }
+
+    fn run(receiver: Receiver<WorkerTask>, interrupter: Box<super::Interrupter>) {
+        let poll = Poll::new().expect("Could not create poll");
+        let mut buffer = [0u8; 1024];
+        let mut events = Events::with_capacity(1024);
+        let mut clients = Vec::<Option<Client>>::new();
+        let mut available_client_indices = Vec::<usize>::new();
+
+        poll.register(
+            &receiver,
+            Token(usize::max_value()),
+            Ready::readable(),
+            PollOpt::edge(),
+        )
+        .expect("Could not register thread receiver");
+
+        while interrupter.is_running() {
+            poll.poll(&mut events, Some(std::time::Duration::from_millis(100)))
+                .unwrap();
+            for event in events.iter() {
+                if event.token() == Token(usize::max_value()) {
+                    while let Ok(task) = receiver.try_recv() {
+                        let next_token = match available_client_indices.pop() {
+                            Some(t) => t,
+                            None => {
+                                let index = clients.len();
+                                clients.push(None);
+                                index
+                            }
+                        };
+                        poll.register(
+                            &task.stream,
+                            Token(next_token),
+                            Ready::readable(),
+                            PollOpt::edge(),
+                        )
+                        .expect("Could not register client stream");
+                        clients[next_token] = Some(Client::new(task.stream));
+                    }
+                } else if {
+                    let client = &mut clients[event.token().0].as_mut().unwrap();
+                    client.read(&mut buffer)
+                }
+                .is_err()
+                {
+                    available_client_indices.push(event.token().0);
+                    clients[event.token().0] = None;
                 }
             }
         }
     }
+}
+
+struct WorkerTask {
+    stream: TcpStream,
 }
 
 pub fn screen_render_loop(mut screen: Screen) {
@@ -105,33 +173,5 @@ impl Client {
                 self.buffer.drain(..=end_of_line);
             }
         }
-    }
-}
-
-pub struct TokenGenerator {
-    released: Vec<Token>,
-    next: usize,
-}
-
-impl TokenGenerator {
-    pub fn new() -> TokenGenerator {
-        TokenGenerator {
-            released: Vec::new(),
-            next: 1,
-        }
-    }
-
-    pub fn next(&mut self) -> Token {
-        if let Some(t) = self.released.pop() {
-            t
-        } else {
-            let result = Token(self.next);
-            self.next += 1;
-            result
-        }
-    }
-
-    pub fn release(&mut self, token: Token) {
-        self.released.push(token);
     }
 }

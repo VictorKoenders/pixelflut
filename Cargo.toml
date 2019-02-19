@@ -12,6 +12,7 @@ futures = "0.1"
 num_cpus = "1.9"
 time = "0.1"
 mio = { version = "0.6", default-features = false }
+mio-extras = "2.0"
 hashbrown = { version = "0.1", features = ["nightly"] }
 
 [dev-dependencies]
