@@ -9,7 +9,7 @@ pub fn main_loop(
     host: IpAddr,
     port: u16,
     worker_pool_size: usize,
-    interrupter: &super::Interrupter,
+    interrupter: &dyn super::Interrupter,
 ) {
     let poll = Poll::new().expect("Could not create poll");
     // let mut clients = HashMap::<Token, Client>::new();
@@ -46,7 +46,7 @@ pub fn main_loop(
 struct Worker(Sender<WorkerTask>);
 
 impl Worker {
-    pub fn spawn(interrupter: Box<super::Interrupter>) -> Worker {
+    pub fn spawn(interrupter: Box<dyn super::Interrupter>) -> Worker {
         let (sender, receiver) = channel();
         std::thread::spawn(move || {
             Worker::run(receiver, interrupter);
@@ -60,20 +60,15 @@ impl Worker {
             .expect("Could not send incoming tcp stream to worker");
     }
 
-    fn run(receiver: Receiver<WorkerTask>, interrupter: Box<super::Interrupter>) {
+    fn run(receiver: Receiver<WorkerTask>, interrupter: Box<dyn super::Interrupter>) {
         let poll = Poll::new().expect("Could not create poll");
         let mut buffer = [0u8; 1024];
         let mut events = Events::with_capacity(1024);
         let mut clients = Vec::<Option<Client>>::with_capacity(100_000);
         let mut available_client_indices = Vec::<usize>::with_capacity(100_000);
 
-        poll.register(
-            &receiver,
-            Token(0),
-            Ready::readable(),
-            PollOpt::edge(),
-        )
-        .expect("Could not register thread receiver");
+        poll.register(&receiver, Token(0), Ready::readable(), PollOpt::edge())
+            .expect("Could not register thread receiver");
 
         while interrupter.is_running() {
             poll.poll(&mut events, Some(std::time::Duration::from_millis(100)))
@@ -97,14 +92,24 @@ impl Worker {
                         .expect("Could not register client stream");
                         clients[next_token - 1] = Some(Client::new(task.stream));
                     }
-                } else if {
+                } else {
                     let client = &mut clients[event.token().0 - 1].as_mut().unwrap();
-                    client.read(&mut buffer)
-                }
-                .is_err()
-                {
-                    available_client_indices.push(event.token().0);
-                    clients[event.token().0 - 1] = None;
+                    let mut is_err = client.read(&mut buffer).is_err();
+                    if !is_err {
+                        is_err = poll
+                            .reregister(
+                                &client.stream,
+                                event.token(),
+                                Ready::readable(),
+                                PollOpt::edge(),
+                            )
+                            .is_err();
+                    }
+
+                    if is_err {
+                        available_client_indices.push(event.token().0);
+                        clients[event.token().0 - 1] = None;
+                    }
                 }
             }
         }
@@ -136,41 +141,40 @@ impl Client {
     }
 
     pub fn read(&mut self, buffer: &mut [u8]) -> Result<(), Error> {
-        loop {
-            let length = match self.stream.read(buffer) {
-                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                    return Ok(());
-                }
-                Err(e) => return Err(e),
-                Ok(l) => l,
+        let length = match self.stream.read(buffer) {
+            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                return Ok(());
+            }
+            Err(e) => return Err(e),
+            Ok(l) => l,
+        };
+
+        if length == 0 {
+            // pipe broken
+            return Err(Error::new(ErrorKind::Other, "Broken pipe"));
+        }
+
+        self.buffer.extend_from_slice(&buffer[..length]);
+
+        while let Some(index) = self.buffer.iter().position(|b| b == &b'\n') {
+            let end_of_line = if index > 0 && self.buffer[index - 1] == b'\r' {
+                index - 1
+            } else {
+                index
             };
 
-            if length == 0 {
-                // pipe broken
-                return Err(Error::new(ErrorKind::Other, "Broken pipe"));
+            let result = match crate::client::Client
+                .handle_message_response(&self.buffer[..end_of_line])
+            {
+                Ok(r) => r,
+                Err(()) => return Err(Error::new(ErrorKind::Other, "Could not handle message")),
+            };
+            if !result.is_empty() {
+                self.stream.write_all(result)?;
             }
 
-            self.buffer.extend_from_slice(&buffer[..length]);
-
-            while let Some(index) = self.buffer.iter().position(|b| b == &b'\n') {
-                let end_of_line = if index > 0 && self.buffer[index - 1] == b'\r' {
-                    index - 1
-                } else {
-                    index
-                };
-
-                let result = match crate::client::Client
-                    .handle_message_response(&self.buffer[..end_of_line])
-                {
-                    Ok(r) => r,
-                    Err(()) => return Err(Error::new(ErrorKind::Other, "Could not handle message")),
-                };
-                if !result.is_empty() {
-                    self.stream.write_all(result)?;
-                }
-
-                self.buffer.drain(..=end_of_line);
-            }
+            self.buffer.drain(..=end_of_line);
         }
+        Ok(())
     }
 }

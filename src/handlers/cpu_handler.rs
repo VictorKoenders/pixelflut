@@ -19,7 +19,7 @@ pub enum HandlerNotify {
 }
 
 impl Handle {
-    pub fn new(interrupter: Box<super::Interrupter>) -> Handle {
+    pub fn new(interrupter: Box<dyn super::Interrupter>) -> Handle {
         let (sender, receiver) = channel();
         let counter = Arc::new(AtomicUsize::new(0));
         let counter_clone = counter.clone();
@@ -51,7 +51,7 @@ impl Handle {
 fn run(
     receiver: &Receiver<HandlerNotify>,
     counter: &Arc<AtomicUsize>,
-    interrupter: Box<super::Interrupter>,
+    interrupter: Box<dyn super::Interrupter>,
 ) {
     // The largest message that we support is: (nn = \r\n)
     // 00000000011111111112
@@ -113,7 +113,7 @@ fn run(
 
 const FRAME_DURATION_NS: u64 = 1_000_000_000 / 30;
 
-pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize, interrupter: &super::Interrupter) {
+pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize, interrupter: &dyn super::Interrupter) {
     let listener = TcpListener::bind((host, port)).expect("Could not bind on port 1234");
     let mut screen = Screen::init();
 

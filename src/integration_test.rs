@@ -26,7 +26,7 @@ pub fn r#async() {
 
 fn do_test<F>(f: F)
 where
-    F: Fn(&Interrupter, u16) + std::marker::Send + 'static,
+    F: Fn(&dyn Interrupter, u16) + std::marker::Send + 'static,
 {
     Screen::init();
     let mut rng = thread_rng();
@@ -101,7 +101,7 @@ impl Interrupter for TestInterrupter {
     fn is_running(&self) -> bool {
         self.val.load(Ordering::Relaxed)
     }
-    fn clone(&self) -> Box<crate::handlers::Interrupter> {
+    fn clone(&self) -> Box<dyn crate::handlers::Interrupter> {
         Box::new(TestInterrupter {
             val: Arc::clone(&self.val),
         })

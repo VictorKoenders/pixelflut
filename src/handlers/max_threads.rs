@@ -6,7 +6,7 @@ use std::net::{IpAddr, TcpListener, TcpStream};
 use std::thread::{sleep, spawn};
 use std::time::Duration;
 
-pub fn main_loop(host: IpAddr, port: u16, interrupter: &super::Interrupter) {
+pub fn main_loop(host: IpAddr, port: u16, interrupter: &dyn super::Interrupter) {
     let mut screen = Screen::init();
 
     spawn(move || render_loop(&mut screen));

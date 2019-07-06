@@ -11,7 +11,7 @@ pub mod max_threads;
 
 pub trait Interrupter: std::marker::Send {
     fn is_running(&self) -> bool;
-    fn clone(&self) -> Box<Interrupter>;
+    fn clone(&self) -> Box<dyn Interrupter>;
 }
 
 pub struct RunIndefinitely;
@@ -20,7 +20,7 @@ impl Interrupter for RunIndefinitely {
     fn is_running(&self) -> bool {
         true
     }
-    fn clone(&self) -> Box<Interrupter> {
+    fn clone(&self) -> Box<dyn Interrupter> {
         Box::new(RunIndefinitely)
     }
 }
