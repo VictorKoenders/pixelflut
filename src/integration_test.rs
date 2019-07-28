@@ -87,7 +87,7 @@ where
     std::thread::sleep(std::time::Duration::from_millis(5000));
     println!("Checking if all pixels are white");
 
-    assert!(Screen::all(&[255, 255, 255]));
+    assert!(Screen::all([255, 255, 255]));
     println!("Interrupting test");
     interrupter.val.store(false, Ordering::Relaxed);
     println!("Done!");

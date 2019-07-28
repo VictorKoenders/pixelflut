@@ -31,11 +31,11 @@ impl Screen {
     }
 
     #[cfg(test)]
-    pub fn all(slice: &[u8; 3]) -> bool {
+    pub fn all(slice: [u8; 3]) -> bool {
         unsafe {
             for i in 0..FRAME.len() / 3 {
                 let i = i * 3;
-                if &FRAME[i..i + 3] != &slice[..] {
+                if FRAME[i..i + 3] != slice[..] {
                     println!(
                         "position {} does not match: {:?} (expected {:?})",
                         i,

@@ -222,7 +222,7 @@ macro_rules! test_and_bench {
                     let result: Vec<u8> = super::$fn_name(&cloned[..], |c| {
                         ::test::black_box(c);
                     });
-                    *(&mut cloned) = result;
+                    cloned = result;
                     ::test::black_box(cloned);
                 });
             }

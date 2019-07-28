@@ -163,14 +163,12 @@ impl Client {
                 index
             };
 
-            let result = match crate::client::Client
-                .handle_message_response(&self.buffer[..end_of_line])
+            if let Ok(result) =
+                crate::client::Client.handle_message_response(&self.buffer[..end_of_line])
             {
-                Ok(r) => r,
-                Err(()) => return Err(Error::new(ErrorKind::Other, "Could not handle message")),
-            };
-            if !result.is_empty() {
-                self.stream.write_all(result)?;
+                if !result.is_empty() {
+                    self.stream.write_all(result)?;
+                }
             }
 
             self.buffer.drain(..=end_of_line);

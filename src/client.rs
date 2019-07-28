@@ -73,30 +73,33 @@ fn handle_message_v1(buffer: &[u8]) -> Result<&'static [u8], ()> {
 
 fn handle_message_v2(buffer: &[u8]) -> Result<&'static [u8], ()> {
     match buffer.get(0) {
-        Some(b'P') | Some(b'p') => parse_px(&buffer[3..]),
+        Some(b'P') | Some(b'p') => {
+            let _ = parse_px(buffer.get(3..));
+            Ok(&[])
+        }
         Some(b'S') => {
-            if &buffer[1..] == b"IZE" {
+            if buffer.get(1..) == Some(b"IZE") {
                 Ok(Screen::get_screen_size_message())
             } else {
                 Ok(&[])
             }
         }
         Some(b's') => {
-            if &buffer[1..] == b"ize" {
+            if buffer.get(1..) == Some(b"ize") {
                 Ok(Screen::get_screen_size_message())
             } else {
                 Ok(&[])
             }
         }
         Some(b'H') => {
-            if &buffer[1..] == b"ELP" {
+            if buffer.get(1..) == Some(b"ELP") {
                 Ok(HELP_MESSAGE)
             } else {
                 Ok(&[])
             }
         }
         Some(b'h') => {
-            if &buffer[1..] == b"elp" {
+            if buffer.get(1..) == Some(b"elp") {
                 Ok(HELP_MESSAGE)
             } else {
                 Ok(&[])
@@ -106,47 +109,51 @@ fn handle_message_v2(buffer: &[u8]) -> Result<&'static [u8], ()> {
     }
 }
 
-fn parse_px(buffer: &[u8]) -> Result<&'static [u8], ()> {
-    let mut first_index = 0;
-    let mut second_index = 0;
-    for (i, char) in buffer.iter().enumerate() {
-        if char == &b' ' {
-            first_index = i;
-            break;
-        }
-    }
-    for (i, char) in buffer.iter().enumerate().skip(first_index + 1) {
-        if char == &b' ' {
-            second_index = i;
-            break;
-        }
-    }
-    if second_index == 0 {
-        return Err(());
-    }
+type PxLocation = ((usize, usize), (u8, u8, u8));
 
-    let x = fast_parse_usize(&buffer[..first_index])?;
-    let y = fast_parse_usize(&buffer[first_index + 1..second_index])?;
-    let red = fast_parse_hex(&buffer[second_index + 1..second_index + 3])?;
-    let green = fast_parse_hex(&buffer[second_index + 3..second_index + 5])?;
-    let blue = fast_parse_hex(&buffer[second_index + 5..second_index + 7])?;
+fn parse_px(buffer: Option<&[u8]>) -> Option<PxLocation> {
+    let buffer = buffer?;
+    let mut iter = buffer.iter();
+
+    let first_index = iter.position(|c| c == &b' ')?;
+    let second_index = first_index + iter.position(|c| c == &b' ')?;
+
+    let x = fast_parse_usize(buffer.get(..first_index)?)?;
+    let y = fast_parse_usize(buffer.get(first_index + 1..=second_index)?)?;
+    let red = fast_parse_hex(buffer.get(second_index + 2..second_index + 4)?)?;
+    let green = fast_parse_hex(buffer.get(second_index + 4..second_index + 6)?)?;
+    let blue = fast_parse_hex(buffer.get(second_index + 6..second_index + 8)?)?;
 
     Screen::set_pixel((x, y), (red, green, blue));
 
-    Ok(&[])
+    Some(((x, y), (red, green, blue)))
 }
 
-fn fast_parse_usize(buff: &[u8]) -> Result<usize, ()> {
+#[test]
+fn test_parse_px() {
+    assert_eq!(
+        parse_px(Some(b"1 2 AABBCC")),
+        Some(((1, 2), (0xAA, 0xBB, 0xCC)))
+    );
+    assert_eq!(
+        parse_px(Some(b"50 50 FF0000")),
+        Some(((50, 50), (0xFF, 0x00, 0x00)))
+    );
+    assert!(parse_px(None).is_none());
+    assert!(parse_px(Some(b"1 2")).is_none());
+}
+
+fn fast_parse_usize(buff: &[u8]) -> Option<usize> {
     let mut result = 0;
     for b in buff {
         let b = *b;
         if b >= b'0' && b <= b'9' {
             result = result * 10 + (b - b'0') as usize;
         } else {
-            return Err(());
+            return None;
         }
     }
-    Ok(result)
+    Some(result)
 }
 
 #[bench]
@@ -188,7 +195,7 @@ fn bench_parse_hex_std(b: &mut Bencher) {
     });
 }
 
-fn fast_parse_hex(buff: &[u8]) -> Result<u8, ()> {
+fn fast_parse_hex(buff: &[u8]) -> Option<u8> {
     let mut result = 0;
     for b in buff {
         let b = *b;
@@ -199,10 +206,10 @@ fn fast_parse_hex(buff: &[u8]) -> Result<u8, ()> {
         } else if b >= b'a' && b <= b'f' {
             result = result * 16 + (b - b'a' + 10);
         } else {
-            return Err(());
+            return None;
         }
     }
-    Ok(result)
+    Some(result)
 }
 
 #[bench]
@@ -230,7 +237,7 @@ fn bench_handle_invalid_px_message_v1(b: &mut Bencher) {
     let bytes: &[&'static [u8]] = &[b"PX 144 255", b"PX -1 -1 ff0055"];
     b.iter(|| {
         for b in bytes.iter() {
-            if let Ok(_) = black_box(handle_message_v1(b)) {
+            if black_box(handle_message_v1(b)).is_ok() {
                 panic!("Expected error, got Ok: {:?}", ::std::str::from_utf8(&b));
             }
         }
@@ -272,7 +279,7 @@ fn bench_handle_invalid_px_message_v2(b: &mut Bencher) {
     let bytes: &[&'static [u8]] = &[b"PX 144 255", b"px -1 -1 ff0055"];
     b.iter(|| {
         for b in bytes.iter() {
-            if let Ok(_) = black_box(handle_message_v2(b)) {
+            if black_box(handle_message_v2(b)).is_ok() {
                 panic!("Should not be okay");
             }
         }
