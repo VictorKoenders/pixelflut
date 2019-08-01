@@ -1,4 +1,6 @@
-![](blob/master/assets/db9c0554-b464-11e9-9eea-abedc0ce7926.gif | width=144)
+![](https://raw.githubusercontent.com/VictorKoenders/pixelflut/master/assets/db9c0554-b464-11e9-9eea-abedc0ce7926.gif)
+
+Animation created by [@k_henhey](https://twitter.com/k_henhey)
 
 ## Running the server
 To run the server, you need to install rustup:
