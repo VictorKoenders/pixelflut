@@ -8,8 +8,8 @@ extern crate proptest;
 extern crate test;
 
 pub mod client;
-mod handlers;
-mod screen;
-mod utils;
+pub mod handlers;
+pub mod screen;
+pub mod utils;
 
 pub use crate::utils::*;

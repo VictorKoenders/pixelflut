@@ -185,6 +185,7 @@ fn fast_parse_usize(buff: &[u8]) -> Option<usize> {
     Some(result)
 }
 
+#[cfg(test)]
 #[bench]
 fn bench_parse_usize_fast(b: &mut Bencher) {
     let u = b"12345";
@@ -194,6 +195,7 @@ fn bench_parse_usize_fast(b: &mut Bencher) {
         black_box(u);
     });
 }
+#[cfg(test)]
 #[bench]
 fn bench_parse_usize_std(b: &mut Bencher) {
     let u = b"12345";
@@ -204,6 +206,7 @@ fn bench_parse_usize_std(b: &mut Bencher) {
         black_box(u);
     });
 }
+#[cfg(test)]
 #[bench]
 fn bench_parse_hex_fast(b: &mut Bencher) {
     let u = b"FF";
@@ -213,6 +216,7 @@ fn bench_parse_hex_fast(b: &mut Bencher) {
         black_box(u);
     });
 }
+#[cfg(test)]
 #[bench]
 fn bench_parse_hex_std(b: &mut Bencher) {
     let u = b"FF";
@@ -241,6 +245,7 @@ fn fast_parse_hex(buff: &[u8]) -> Option<u8> {
     Some(result)
 }
 
+#[cfg(test)]
 #[bench]
 fn bench_handle_help_message_v1(b: &mut Bencher) {
     let bytes: &[&'static [u8]] = &[b"HELP", b"help"];
@@ -251,6 +256,7 @@ fn bench_handle_help_message_v1(b: &mut Bencher) {
     })
 }
 
+#[cfg(test)]
 #[bench]
 fn bench_handle_size_message_v1(b: &mut Bencher) {
     let bytes: &[&'static [u8]] = &[b"size", b"SIZE"];
@@ -261,6 +267,7 @@ fn bench_handle_size_message_v1(b: &mut Bencher) {
     })
 }
 
+#[cfg(test)]
 #[bench]
 fn bench_handle_invalid_px_message_v1(b: &mut Bencher) {
     let bytes: &[&'static [u8]] = &[b"PX 144 255", b"PX -1 -1 ff0055"];
@@ -273,6 +280,7 @@ fn bench_handle_invalid_px_message_v1(b: &mut Bencher) {
     })
 }
 
+#[cfg(test)]
 #[bench]
 fn bench_handle_px_message_v1(b: &mut Bencher) {
     let bytes: &[&'static [u8]] = &[b"PX 144 255 FF0055", b"px 144 255 ff0055"];
@@ -283,6 +291,7 @@ fn bench_handle_px_message_v1(b: &mut Bencher) {
     })
 }
 
+#[cfg(test)]
 #[bench]
 fn bench_handle_help_message_v2(b: &mut Bencher) {
     let bytes: &[&'static [u8]] = &[b"HELP", b"help"];
@@ -293,6 +302,7 @@ fn bench_handle_help_message_v2(b: &mut Bencher) {
     })
 }
 
+#[cfg(test)]
 #[bench]
 fn bench_handle_size_message_v2(b: &mut Bencher) {
     let bytes: &[&'static [u8]] = &[b"size", b"SIZE"];
@@ -303,6 +313,7 @@ fn bench_handle_size_message_v2(b: &mut Bencher) {
     })
 }
 
+#[cfg(test)]
 #[bench]
 fn bench_handle_invalid_px_message_v2(b: &mut Bencher) {
     let bytes: &[&'static [u8]] = &[b"PX 144 255", b"px -1 -1 ff0055"];
@@ -315,6 +326,7 @@ fn bench_handle_invalid_px_message_v2(b: &mut Bencher) {
     })
 }
 
+#[cfg(test)]
 #[bench]
 fn bench_handle_px_message_v2(b: &mut Bencher) {
     let bytes: &[&'static [u8]] = &[b"PX 144 255 FF0055", b"px 144 255 ff0055"];

@@ -144,6 +144,7 @@ fn run_client(mut socket: TcpStream) -> Result<()> {
 #[cfg(test)]
 const LONG_MESSAGE: &[u8] = b"PX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\nPX 100 100 FFAABB\n";
 
+#[cfg(test)]
 #[bench]
 pub fn bench_stream_reader_v1(b: &mut ::test::Bencher) {
     let readers = LONG_MESSAGE
@@ -167,6 +168,7 @@ pub fn bench_stream_reader_v1(b: &mut ::test::Bencher) {
     });
 }
 
+#[cfg(test)]
 #[bench]
 pub fn bench_stream_reader_v2(b: &mut ::test::Bencher) {
     let readers = LONG_MESSAGE
@@ -190,6 +192,7 @@ pub fn bench_stream_reader_v2(b: &mut ::test::Bencher) {
     });
 }
 
+#[cfg(test)]
 #[bench]
 pub fn bench_stream_reader_v3(b: &mut ::test::Bencher) {
     let readers = LONG_MESSAGE
@@ -212,6 +215,7 @@ pub fn bench_stream_reader_v3(b: &mut ::test::Bencher) {
         }
     });
 }
+#[cfg(test)]
 #[bench]
 pub fn bench_stream_reader_v4(b: &mut ::test::Bencher) {
     let readers = LONG_MESSAGE

@@ -133,6 +133,7 @@ macro_rules! bench_set_pixel {
     };
     ($mod_name:ident, $fn_name:ident, $bracket_style:tt) => {
         pub mod $mod_name {
+            #[cfg(test)]
             #[bench]
             pub fn bench(b: &mut test::Bencher) {
                 let mut _screen = super::Screen::init();

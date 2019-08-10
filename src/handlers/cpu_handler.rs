@@ -214,6 +214,7 @@ macro_rules! test_and_bench {
     ($mod_name:ident, $fn_name:ident) => {
         pub mod $mod_name {
 
+            #[cfg(test)]
             #[bench]
             fn bench(b: &mut ::test::Bencher) {
                 let vec: Vec<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n"[..]);
@@ -241,6 +242,7 @@ macro_rules! test_and_bench {
 test_and_bench!(split_v1);
 test_and_bench!(split_v2, split);
 
+#[cfg(test)]
 #[bench]
 fn bench_buffer_split_v3(b: &mut ::test::Bencher) {
     let vec: Vec<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n"[..]);
