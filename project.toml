@@ -1,11 +1,11 @@
 [project]
 name = "pixelflut"
 artifacts = [
-    "target/release/*
+    "target/release/pixelflut"
 ]
 
 steps = [
     "cargo build",
     "cargo test",
-    "cargo release"
+    "cargo build --release"
 ]
