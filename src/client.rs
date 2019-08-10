@@ -1,5 +1,5 @@
 use crate::screen::Screen;
-use crate::utils::parse_usize;
+use crate::utils::{parse_hex, parse_usize};
 use std::io::Write;
 use std::net::TcpStream;
 #[cfg(test)]
@@ -145,9 +145,9 @@ fn parse_px(buffer: Option<&[u8]>) -> Option<PxLocation> {
 
     let x = parse_usize(buffer.get(..first_index)?)?;
     let y = parse_usize(buffer.get(first_index + 1..=second_index)?)?;
-    let red = fast_parse_hex(buffer.get(second_index + 2..second_index + 4)?)?;
-    let green = fast_parse_hex(buffer.get(second_index + 4..second_index + 6)?)?;
-    let blue = fast_parse_hex(buffer.get(second_index + 6..second_index + 8)?)?;
+    let red = parse_hex(buffer.get(second_index + 2..second_index + 4)?)?;
+    let green = parse_hex(buffer.get(second_index + 4..second_index + 6)?)?;
+    let blue = parse_hex(buffer.get(second_index + 6..second_index + 8)?)?;
 
     Screen::set_pixel((x, y), (red, green, blue));
 
@@ -166,45 +166,6 @@ fn test_parse_px() {
     );
     assert!(parse_px(None).is_none());
     assert!(parse_px(Some(b"1 2")).is_none());
-}
-
-#[cfg(test)]
-#[bench]
-fn bench_parse_hex_fast(b: &mut Bencher) {
-    let u = b"FF";
-    b.iter(|| {
-        let u = black_box(u);
-        let u = fast_parse_hex(&u[..]).unwrap();
-        black_box(u);
-    });
-}
-#[cfg(test)]
-#[bench]
-fn bench_parse_hex_std(b: &mut Bencher) {
-    let u = b"FF";
-    b.iter(|| {
-        let u = black_box(u);
-        let str = ::std::str::from_utf8(u).unwrap();
-        let u = u8::from_str_radix(&str[..], 16).unwrap();
-        black_box(u);
-    });
-}
-
-fn fast_parse_hex(buff: &[u8]) -> Option<u8> {
-    let mut result = 0;
-    for b in buff {
-        let b = *b;
-        if b >= b'0' && b <= b'9' {
-            result = result * 16 + (b - b'0');
-        } else if b >= b'A' && b <= b'F' {
-            result = result * 16 + (b - b'A' + 10);
-        } else if b >= b'a' && b <= b'f' {
-            result = result * 16 + (b - b'a' + 10);
-        } else {
-            return None;
-        }
-    }
-    Some(result)
 }
 
 #[cfg(test)]
