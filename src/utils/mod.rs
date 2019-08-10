@@ -2,7 +2,10 @@ mod parse_hex;
 mod parse_usize;
 
 pub use self::parse_hex::{initialize_v2 as initialize_hex, parse_v2 as parse_hex};
-pub use self::parse_usize::{initialize_v2_cache as initialize_usize, parse_v2 as parse_usize};
+pub use self::parse_usize::{
+    initialize_v2_cache as initialize_usize, parse_v2 as parse_usize,
+    parse_with_len_v2 as parse_usize_with_len,
+};
 
 pub(self) fn get_index_from_str(s: &[u8]) -> usize {
     let len = s.len();

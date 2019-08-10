@@ -28,6 +28,9 @@ impl NumCache {
             entries: Vec::new(),
         }
     }
+    pub fn is_initialized(&self) -> bool {
+        !self.entries.is_empty()
+    }
     pub fn add(&mut self, index: usize, val: u8) {
         if self.entries.len() < index {
             self.entries.reserve(index - self.entries.len());
@@ -48,6 +51,9 @@ struct NumCacheEntry {
 static mut V2_CACHE: NumCache = NumCache::new();
 
 pub fn initialize_v2() {
+    if unsafe { V2_CACHE.is_initialized() } {
+        return;
+    }
     for val in 0..=256u16 {
         let str = format!("{:02X}", val);
         let index = super::get_index_from_str(str.as_bytes());
@@ -63,8 +69,13 @@ pub fn initialize_v2() {
     }
 }
 
-pub fn parse_v2(b: &[u8]) -> Option<u8> {
-    let index = super::get_index_from_str(&b[..2]);
+pub fn parse_v2(b: Option<&[u8]>) -> Option<u8> {
+    #[cfg(test)]
+    initialize_v2();
+
+    let b = b?;
+    debug_assert_eq!(2, b.len());
+    let index = super::get_index_from_str(b);
     unsafe { V2_CACHE.get(index) }.map(|v| v.val)
 }
 
@@ -102,7 +113,7 @@ fn bench_parse_v2(b: &mut Bencher) {
     b.iter(|| {
         let u = black_box(u);
         for _ in 0..10_000 {
-            let u = parse_v2(&u[..]).unwrap();
+            let u = parse_v2(Some(&u[..])).unwrap();
             black_box(u);
         }
     });

@@ -59,7 +59,7 @@ where
 
     println!("Screen size {}x{}", width, height);
 
-    assert_eq!(Screen::get_pixel_at(50, 50), &[0, 0, 0]);
+    assert_eq!(Screen::get_pixel_at(50, 50), Some(&[0, 0, 0][..]));
     for (command, expected) in &[
         ("FF0000", [0, 0, 255]),
         ("00FF00", [0, 255, 0]),
@@ -70,7 +70,7 @@ where
             .write_all(command.as_bytes())
             .expect("Could not send PX command");
         std::thread::sleep(std::time::Duration::from_millis(100));
-        assert_eq!(Screen::get_pixel_at(50, 50), &expected[..]);
+        assert_eq!(Screen::get_pixel_at(50, 50), Some(&expected[..]));
     }
 
     println!("Filling entire screen, this might take a while...");

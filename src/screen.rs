@@ -20,13 +20,14 @@ pub struct Screen {
 
 impl Screen {
     #[cfg(test)]
-    pub fn get_pixel_at(x: usize, y: usize) -> &'static [u8] {
+    pub fn get_pixel_at(x: usize, y: usize) -> Option<&'static [u8]> {
         unsafe {
             if x >= FRAME_WIDTH || y >= FRAME_HEIGHT {
-                panic!("Out of boundaries");
+                None
+            } else {
+                let start_index = (y * FRAME_LINE_LENGTH + x * FRAME_BYTES_PER_PIXEL) as usize;
+                Some(&FRAME[start_index..start_index + 3])
             }
-            let start_index = (y * FRAME_LINE_LENGTH + x * FRAME_BYTES_PER_PIXEL) as usize;
-            &FRAME[start_index..start_index + 3]
         }
     }
 

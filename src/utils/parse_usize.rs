@@ -3,7 +3,7 @@ use hashbrown::HashMap;
 #[cfg(test)]
 use test::{black_box, Bencher};
 
-const MAX_VALID_NUMBER: usize = 1024;
+const MAX_VALID_NUMBER: usize = 1920;
 
 #[cfg(test)]
 pub fn parse_v1(buff: &[u8]) -> Option<usize> {
@@ -60,6 +60,9 @@ impl NumCache {
     pub fn memory_size(&self) -> usize {
         self.entries.len() * std::mem::size_of::<Option<NumCacheEntry>>()
     }
+    pub fn is_initialized(&self) -> bool {
+        !self.entries.is_empty()
+    }
 }
 #[derive(Copy, Clone, Debug)]
 struct NumCacheEntry {
@@ -70,6 +73,9 @@ struct NumCacheEntry {
 static mut V2_CACHE: NumCache = NumCache::new();
 
 pub fn initialize_v2_cache() {
+    if unsafe { V2_CACHE.is_initialized() } {
+        return;
+    }
     assert_eq!(
         std::mem::size_of::<u64>(),
         std::mem::size_of::<usize>(),
@@ -86,7 +92,6 @@ pub fn initialize_v2_cache() {
     }
     let size = unsafe { V2_CACHE.memory_size() };
     println!("Integer parsing memory cache: {}mb", size / 1024 / 1024);
-    println!("Bytes per MAX_VALID_NUMBER: {}", size / MAX_VALID_NUMBER);
 }
 
 pub fn parse_v2(buff: &[u8]) -> Option<usize> {
@@ -94,6 +99,8 @@ pub fn parse_v2(buff: &[u8]) -> Option<usize> {
 }
 
 pub fn parse_with_len_v2(buff: &[u8]) -> Option<(usize, usize)> {
+    #[cfg(test)]
+    initialize_v2_cache();
     for &i in &[4, 3, 2, 1] {
         let range = match buff.get(..i) {
             Some(r) => r,
@@ -112,6 +119,9 @@ static mut V3_CACHE: Option<HashMap<usize, NumCacheEntry>> = None;
 
 #[cfg(test)]
 pub fn initialize_v3_cache() {
+    if unsafe { V3_CACHE.is_some() } {
+        return;
+    }
     assert_eq!(
         std::mem::size_of::<u64>(),
         std::mem::size_of::<usize>(),
@@ -143,6 +153,8 @@ pub fn parse_v3(buff: &[u8]) -> Option<usize> {
 
 #[cfg(test)]
 pub fn parse_with_len_v3(buff: &[u8]) -> Option<(usize, usize)> {
+    #[cfg(test)]
+    initialize_v3_cache();
     for &i in &[4, 3, 2, 1] {
         let range = match buff.get(..i) {
             Some(r) => r,
