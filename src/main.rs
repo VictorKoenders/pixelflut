@@ -68,6 +68,7 @@ fn main() {
         .expect("Port is invalid");
 
     utils::initialize_usize();
+    utils::initialize_hex();
 
     let (subcommand_name, subcommand_matches) = matches.subcommand();
     match subcommand_name {

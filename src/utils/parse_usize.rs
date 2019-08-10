@@ -51,37 +51,6 @@ static mut V2_CACHE_1_CHARS: NumCache = NumCache::new();
 static mut V2_CACHE_2_CHARS: NumCache = NumCache::new();
 static mut V2_CACHE_3_CHARS: NumCache = NumCache::new();
 
-fn get_index_from_str(s: &[u8]) -> usize {
-    let len = s.len();
-    let bit_len = len * 8;
-    if cfg!(debug_assertions) && len > 8 {
-        panic!(
-            "Could not get index from str with a len larger than 8 (requested {})",
-            len
-        );
-    }
-    let mut val: u64 = 0;
-    unsafe {
-        std::ptr::copy_nonoverlapping(s.as_ptr(), &mut val as *mut u64 as *mut u8, 8);
-    }
-
-    // make a bitwise mask for the last `len` chars
-    let mask = (1 << bit_len) - 1;
-
-    (val & mask) as usize
-}
-
-#[test]
-fn test_get_index_from_str() {
-    do_test_get_index_from_str();
-}
-fn do_test_get_index_from_str() {
-    // "abc" is 0x616263
-    assert_eq!(get_index_from_str(b"abc"), 0x0063_6261);
-    assert_eq!(get_index_from_str(&b"abcdef"[0..3]), 0x0063_6261);
-    assert_eq!(get_index_from_str(b"640"), 0x0030_3436);
-}
-
 pub fn initialize_v2_cache() {
     assert_eq!(
         std::mem::size_of::<u64>(),
@@ -89,11 +58,11 @@ pub fn initialize_v2_cache() {
         "Pixelflut is optimized for 64-bit platforms, but is run in a different configuration"
     );
     // Sanity check
-    do_test_get_index_from_str();
+    super::do_test_get_index_from_str();
     // Seed for all numbers < 999
     for i in 0..=999 {
         let str = i.to_string();
-        let index = get_index_from_str(str.as_bytes());
+        let index = super::get_index_from_str(str.as_bytes());
 
         if i <= 9 {
             unsafe { V2_CACHE_1_CHARS.add(index, i, str.len() as u8) }
@@ -108,6 +77,10 @@ pub fn initialize_v2_cache() {
 }
 
 pub fn parse_v2(buff: &[u8]) -> Option<usize> {
+    parse_with_len_v2(buff).map(|(num, _)| num)
+}
+
+pub fn parse_with_len_v2(buff: &[u8]) -> Option<(usize, usize)> {
     for (i, cache) in &[
         (3, unsafe { &V2_CACHE_3_CHARS }),
         (2, unsafe { &V2_CACHE_2_CHARS }),
@@ -117,9 +90,9 @@ pub fn parse_v2(buff: &[u8]) -> Option<usize> {
         if buff.len() <= i {
             continue;
         }
-        let index = get_index_from_str(&buff[..i]);
+        let index = super::get_index_from_str(&buff[..i]);
         if let Some(result) = cache.get(index) {
-            return Some(result.num as usize);
+            return Some((result.num as usize, result.str_len as usize));
         }
     }
     None
