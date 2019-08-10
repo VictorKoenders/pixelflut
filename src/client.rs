@@ -133,6 +133,15 @@ fn handle_message_v2(buffer: &[u8]) -> Result<&'static [u8], ()> {
         _ => Ok(&[]),
     }
 }
+/*
+fn handle_message_v3(buffer: &[u8]) -> Option<&'static [u8]> {
+    // We assume that this is a PX command:
+    // 01234567890123456
+    // PX X Y RRGGBB
+    // PX XX YY RRGGBB
+    // PX XXX YYY RRGGBB
+}
+*/
 
 type PxLocation = ((usize, usize), (u8, u8, u8));
 

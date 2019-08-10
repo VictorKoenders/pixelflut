@@ -13,6 +13,7 @@ num_cpus = "1.10"
 time = "0.1"
 mio = { version = "0.6", default-features = false }
 mio-extras = "2.0"
+hashbrown = { version = "0.5", features = ["nightly"] }
 
 [dev-dependencies]
 proptest = "0.9"
