@@ -1,5 +1,4 @@
-#![feature(const_vec_new)]
-#![cfg_attr(test, feature(test))]
+#![feature(const_vec_new, test)]
 
 #[cfg_attr(test, macro_use)]
 #[cfg(test)]
@@ -13,3 +12,5 @@ pub mod screen;
 pub mod utils;
 
 pub use crate::utils::*;
+
+pub type Result<T> = std::result::Result<T, failure::Error>;

@@ -1,5 +1,4 @@
-#![feature(const_vec_new)]
-#![cfg_attr(test, feature(test))]
+#![feature(const_vec_new, test)]
 
 #[cfg_attr(test, macro_use)]
 #[cfg(test)]
@@ -15,6 +14,7 @@ mod handlers;
 mod screen;
 mod utils;
 
+pub type Result<T> = std::result::Result<T, failure::Error>;
 pub use crate::utils::*;
 
 use clap::{App, Arg, SubCommand};
@@ -66,6 +66,8 @@ fn main() {
         .unwrap_or("1234")
         .parse()
         .expect("Port is invalid");
+
+    utils::initialize_usize();
 
     let (subcommand_name, subcommand_matches) = matches.subcommand();
     match subcommand_name {

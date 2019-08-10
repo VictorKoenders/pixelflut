@@ -1,4 +1,5 @@
 use crate::screen::Screen;
+use crate::utils::parse_usize;
 use std::io::Write;
 use std::net::TcpStream;
 #[cfg(test)]
@@ -142,8 +143,8 @@ fn parse_px(buffer: Option<&[u8]>) -> Option<PxLocation> {
     let first_index = iter.position(|c| c == &b' ')?;
     let second_index = first_index + iter.position(|c| c == &b' ')?;
 
-    let x = fast_parse_usize(buffer.get(..first_index)?)?;
-    let y = fast_parse_usize(buffer.get(first_index + 1..=second_index)?)?;
+    let x = parse_usize(buffer.get(..first_index)?)?;
+    let y = parse_usize(buffer.get(first_index + 1..=second_index)?)?;
     let red = fast_parse_hex(buffer.get(second_index + 2..second_index + 4)?)?;
     let green = fast_parse_hex(buffer.get(second_index + 4..second_index + 6)?)?;
     let blue = fast_parse_hex(buffer.get(second_index + 6..second_index + 8)?)?;
@@ -167,45 +168,6 @@ fn test_parse_px() {
     assert!(parse_px(Some(b"1 2")).is_none());
 }
 
-fn fast_parse_usize(buff: &[u8]) -> Option<usize> {
-    let mut result = 0;
-    for b in buff {
-        let b = *b;
-        if b >= b'0' && b <= b'9' {
-            result = result * 10 + (b - b'0') as usize;
-        } else {
-            return None;
-        }
-
-        // We assume we'll never got 1 bil
-        if result > 1_000_000_000 {
-            return None;
-        }
-    }
-    Some(result)
-}
-
-#[cfg(test)]
-#[bench]
-fn bench_parse_usize_fast(b: &mut Bencher) {
-    let u = b"12345";
-    b.iter(|| {
-        let u = black_box(u);
-        let u = fast_parse_usize(&u[..]).unwrap();
-        black_box(u);
-    });
-}
-#[cfg(test)]
-#[bench]
-fn bench_parse_usize_std(b: &mut Bencher) {
-    let u = b"12345";
-    b.iter(|| {
-        let u = black_box(u);
-        let str = ::std::str::from_utf8(u).unwrap();
-        let u: usize = str.parse().unwrap();
-        black_box(u);
-    });
-}
 #[cfg(test)]
 #[bench]
 fn bench_parse_hex_fast(b: &mut Bencher) {
