@@ -19,7 +19,6 @@ pub struct Screen {
 }
 
 impl Screen {
-    #[cfg(test)]
     pub fn get_pixel_at(x: usize, y: usize) -> Option<&'static [u8]> {
         unsafe {
             if x >= FRAME_WIDTH || y >= FRAME_HEIGHT {

@@ -2,6 +2,7 @@ use crate::screen::Screen;
 use mio::net::{TcpListener, TcpStream};
 use mio::{Events, Poll, PollOpt, Ready, Token};
 use mio_extras::channel::{channel, Receiver, Sender};
+use std::collections::VecDeque;
 use std::io::{Error, ErrorKind, Read, Write};
 use std::net::{IpAddr, SocketAddr};
 
@@ -65,7 +66,7 @@ impl Worker {
         let mut buffer = [0u8; 1024];
         let mut events = Events::with_capacity(1024);
         let mut clients = Vec::<Option<Client>>::with_capacity(100_000);
-        let mut available_client_indices = Vec::<usize>::with_capacity(100_000);
+        let mut available_client_indices = VecDeque::<usize>::with_capacity(100_000);
 
         poll.register(&receiver, Token(0), Ready::readable(), PollOpt::edge())
             .expect("Could not register thread receiver");
@@ -76,7 +77,7 @@ impl Worker {
             for event in events.iter() {
                 if event.token() == Token(0) {
                     while let Ok(task) = receiver.try_recv() {
-                        let next_token = match available_client_indices.pop() {
+                        let next_token = match available_client_indices.pop_front() {
                             Some(t) => t,
                             None => {
                                 clients.push(None);
@@ -107,7 +108,7 @@ impl Worker {
                     }
 
                     if is_err {
-                        available_client_indices.push(event.token().0);
+                        available_client_indices.push_back(event.token().0);
                         clients[event.token().0 - 1] = None;
                     }
                 }
@@ -129,19 +130,19 @@ pub fn screen_render_loop(mut screen: Screen) {
 
 pub struct Client {
     pub stream: TcpStream,
-    pub buffer: Vec<u8>,
+    pub buffer: VecDeque<u8>,
 }
 
 impl Client {
     pub fn new(stream: TcpStream) -> Client {
         Client {
             stream,
-            buffer: Vec::with_capacity(1024),
+            buffer: VecDeque::with_capacity(1024),
         }
     }
 
     pub fn read(&mut self, buffer: &mut [u8]) -> Result<(), Error> {
-        let length = match self.stream.read(buffer) {
+        let mut length = match self.stream.read(buffer) {
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
                 return Ok(());
             }
@@ -154,7 +155,13 @@ impl Client {
             return Err(Error::new(ErrorKind::Other, "Broken pipe"));
         }
 
-        self.buffer.extend_from_slice(&buffer[..length]);
+        if length + self.buffer.len() > 1024 {
+            // make sure we never re-allocate the buffer
+            length = 1024 - self.buffer.len();
+        }
+        for b in &buffer[..length] {
+            self.buffer.push_back(*b);
+        }
 
         while let Some(index) = self.buffer.iter().position(|b| b == &b'\n') {
             let end_of_line = if index > 0 && self.buffer[index - 1] == b'\r' {
@@ -163,16 +170,21 @@ impl Client {
                 index
             };
 
-            if let Ok(result) =
-                crate::client::Client.handle_message_response(&self.buffer[..end_of_line])
-            {
+            let line = self.buffer.drain(..end_of_line).collect::<Vec<_>>();
+            if let Ok(result) = crate::client::Client.handle_message_response(&line) {
                 if !result.is_empty() {
-                    self.stream.write_all(result)?;
+                    self.stream.write_all(&result)?;
                 }
             }
-
-            self.buffer.drain(..=end_of_line);
+            while self.buffer.front() == Some(&b'\r') || self.buffer.front() == Some(&b'\n') {
+                self.buffer.pop_front();
+            }
         }
+        if self.buffer.len() > 100 {
+            // we received a lot of data with no newlines, let's just drain the buffer to make sure the client doesn't needlessly allocate memory
+            self.buffer.clear();
+        }
+
         Ok(())
     }
 }

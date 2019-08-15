@@ -1,6 +1,7 @@
 use crate::screen::Screen;
-use crate::utils::{parse_hex, parse_usize};
+use crate::utils::parse_hex;
 #[cfg(test)]
+use crate::utils::parse_usize;
 use std::borrow::Cow;
 use std::io::Write;
 use std::net::TcpStream;
@@ -40,14 +41,14 @@ fn test_handle_message_response() {
 }
 
 impl Client {
-    pub fn handle_message_response(&self, buffer: &[u8]) -> Result<&'static [u8], ()> {
-        handle_message_v2(buffer)
+    pub fn handle_message_response(&self, buffer: &[u8]) -> Result<Cow<'static, [u8]>, ()> {
+        handle_message_v3(buffer).ok_or(())
     }
 
     pub fn handle_message(&self, stream: &mut TcpStream, buffer: &[u8]) -> Result<(), ()> {
-        let slice = handle_message_v2(buffer)?;
+        let slice = handle_message_v3(buffer).ok_or(())?;
         if !slice.is_empty() {
-            stream.write_all(slice).map_err(|_| ())?;
+            stream.write_all(&slice).map_err(|_| ())?;
         }
         Ok(())
     }
@@ -98,6 +99,7 @@ fn handle_message_v1(buffer: &[u8]) -> Result<&'static [u8], ()> {
     }
 }
 
+#[cfg(test)]
 fn handle_message_v2(buffer: &[u8]) -> Result<&'static [u8], ()> {
     match buffer.get(0) {
         Some(b'P') | Some(b'p') => {
@@ -139,7 +141,6 @@ fn handle_message_v2(buffer: &[u8]) -> Result<&'static [u8], ()> {
     }
 }
 
-#[cfg(test)]
 fn handle_message_v3(buffer: &[u8]) -> Option<Cow<'static, [u8]>> {
     use crate::utils::parse_usize_with_len;
     let no_result = Some(Cow::from(Vec::new()));
@@ -148,30 +149,32 @@ fn handle_message_v3(buffer: &[u8]) -> Option<Cow<'static, [u8]>> {
     // PX X Y RRGGBB
     // PX XX YY RRGGBB
     // PX XXX YYY RRGGBB
-    if let Some(mut remaining) = buffer.get(3..) {
+    if let Some(remaining) = buffer.get(3..) {
         if let Some((x, len)) = parse_usize_with_len(remaining) {
-            remaining = &remaining[len + 1..];
-            if let Some((y, len)) = parse_usize_with_len(remaining) {
-                remaining = &remaining[len + 1..];
-                if let (Some(r), Some(g), Some(b)) = (
-                    parse_hex(remaining.get(..2)),
-                    parse_hex(remaining.get(2..4)),
-                    parse_hex(remaining.get(4..6)),
-                ) {
-                    Screen::set_pixel((x, y), (r, g, b));
-                    return no_result;
-                }
+            if let Some(remaining) = remaining.get(len + 1..) {
+                if let Some((y, len)) = parse_usize_with_len(remaining) {
+                    if let Some(remaining) = remaining.get(len + 1..) {
+                        if let (Some(r), Some(g), Some(b)) = (
+                            parse_hex(remaining.get(..2)),
+                            parse_hex(remaining.get(2..4)),
+                            parse_hex(remaining.get(4..6)),
+                        ) {
+                            Screen::set_pixel((x, y), (r, g, b));
+                            return no_result;
+                        }
 
-                if let Some(rgb) = Screen::get_pixel_at(x, y) {
-                    return Some(
-                        format!(
-                            "PX {} {} {:02X}{:02X}{:02X}\r\n",
-                            x, y, rgb[0], rgb[1], rgb[2]
-                        )
-                        .bytes()
-                        .collect::<Vec<_>>()
-                        .into(),
-                    );
+                        if let Some(rgb) = Screen::get_pixel_at(x, y) {
+                            return Some(
+                                format!(
+                                    "PX {} {} {:02X}{:02X}{:02X}\r\n",
+                                    x, y, rgb[0], rgb[1], rgb[2]
+                                )
+                                .bytes()
+                                .collect::<Vec<_>>()
+                                .into(),
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -209,8 +212,10 @@ fn handle_message_v3(buffer: &[u8]) -> Option<Cow<'static, [u8]>> {
     }
 }
 
+#[cfg(test)]
 type PxLocation = ((usize, usize), (u8, u8, u8));
 
+#[cfg(test)]
 fn parse_px(buffer: Option<&[u8]>) -> Option<PxLocation> {
     let buffer = buffer?;
     let mut iter = buffer.iter();
@@ -336,7 +341,7 @@ fn test_handle_px_message_v3() {
     crate::utils::initialize_usize();
     crate::utils::initialize_hex();
 
-    let screen = Screen::init();
+    let _screen = Screen::init();
     let mut random = rand::thread_rng();
     for x in 0..640 {
         for y in 0..480 {
