@@ -130,7 +130,9 @@ impl StreamReader {
 fn run_client(mut socket: TcpStream) -> Result<()> {
     let mut reader = StreamReader::default();
     loop {
-        let len = socket.read(&mut reader.buffer[reader.start_index..])?;
+        let len = socket
+            .read(&mut reader.buffer[reader.start_index..])
+            .map_err(|_| ())?;
         if len == 0 {
             break;
         }
