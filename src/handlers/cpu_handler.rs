@@ -8,6 +8,9 @@ use std::sync::Arc;
 use std::thread::spawn;
 use time;
 
+#[cfg(test)]
+use std::collections::VecDeque;
+
 pub struct Handle {
     counter: Arc<AtomicUsize>,
     sender: Sender<HandlerNotify>,
@@ -207,6 +210,18 @@ fn split_v3(buffer: &mut Vec<u8>, mut cb: impl FnMut(&[u8])) {
     }
 }
 
+#[cfg(test)]
+fn split_v4(buffer: &mut VecDeque<u8>, mut cb: impl FnMut(&[u8])) {
+    while let Some(i) = buffer.iter().position(|b| b == &b'\n') {
+        let line = buffer.drain(..=i).take(i - 1).collect::<Vec<_>>();
+        let mut line_slice = &line[..];
+        while line_slice.last() == Some(&b'\n') || line_slice.last() == Some(&b'\r') {
+            line_slice = &line_slice[..line_slice.len() - 1];
+        }
+        cb(line_slice);
+    }
+}
+
 macro_rules! test_and_bench {
     ($fn_name:ident) => {
         test_and_bench!($fn_name, $fn_name);
@@ -214,7 +229,6 @@ macro_rules! test_and_bench {
     ($mod_name:ident, $fn_name:ident) => {
         pub mod $mod_name {
 
-            #[cfg(test)]
             #[bench]
             fn bench(b: &mut ::test::Bencher) {
                 let vec: Vec<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n"[..]);
@@ -242,7 +256,6 @@ macro_rules! test_and_bench {
 test_and_bench!(split_v1);
 test_and_bench!(split_v2, split);
 
-#[cfg(test)]
 #[bench]
 fn bench_buffer_split_v3(b: &mut ::test::Bencher) {
     let vec: Vec<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n"[..]);
@@ -262,4 +275,44 @@ fn test_buffer_split_v3() {
         assert_eq!(b"1234567890", c);
     });
     assert_eq!(&b"123"[..], buffer.as_slice());
+}
+
+#[bench]
+fn bench_buffer_split_v4(b: &mut ::test::Bencher) {
+    let buffer: VecDeque<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]).into();
+    b.iter(|| {
+        let mut cloned: VecDeque<u8> = buffer.clone();
+        split_v4(&mut cloned, |c| {
+            ::test::black_box(c);
+        });
+        ::test::black_box(cloned);
+    });
+}
+#[bench]
+fn bench_buffer_split_v4_push_front(b: &mut ::test::Bencher) {
+    let source = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]);
+    let mut buffer: VecDeque<u8> = VecDeque::with_capacity(1024);
+    for i in source {
+        buffer.push_front(i);
+    }
+    b.iter(|| {
+        let mut cloned: VecDeque<u8> = buffer.clone();
+        split_v4(&mut cloned, |c| {
+            ::test::black_box(c);
+        });
+        ::test::black_box(cloned);
+    });
+}
+#[test]
+fn test_buffer_split_v4() {
+    let source = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]);
+    let mut buffer: VecDeque<u8> = VecDeque::with_capacity(1024);
+    for i in source {
+        buffer.push_front(i);
+    }
+    split_v4(&mut buffer, |c| {
+        assert_eq!(b"1234567890", c);
+    });
+    let remaining = buffer.into_iter().collect::<Vec<_>>();
+    assert_eq!(&b"123"[..], remaining.as_slice());
 }
