@@ -1,5 +1,6 @@
 #[cfg(test)]
-use hashbrown::HashMap;
+use std::collections::HashMap;
+use std::sync::Mutex;
 
 const MAX_VALID_NUMBER: usize = 1920;
 
@@ -69,8 +70,12 @@ struct NumCacheEntry {
 }
 
 static mut V2_CACHE: NumCache = NumCache::new();
+lazy_static::lazy_static! {
+    static ref V2_CACHE_LOCK: Mutex<()> = Mutex::new(());
+}
 
 pub fn initialize_v2_cache() {
+    let _lock = V2_CACHE_LOCK.lock();
     if unsafe { V2_CACHE.is_initialized() } {
         return;
     }
@@ -114,9 +119,13 @@ pub fn parse_with_len_v2(buff: &[u8]) -> Option<(usize, usize)> {
 
 #[cfg(test)]
 static mut V3_CACHE: Option<HashMap<usize, NumCacheEntry>> = None;
+lazy_static::lazy_static! {
+    static ref V3_CACHE_LOCK: Mutex<()> = Mutex::new(());
+}
 
 #[cfg(test)]
 pub fn initialize_v3_cache() {
+    let _lock = V3_CACHE_LOCK.lock();
     if unsafe { V3_CACHE.is_some() } {
         return;
     }

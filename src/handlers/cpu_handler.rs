@@ -214,7 +214,7 @@ fn split_v3(buffer: &mut Vec<u8>, mut cb: impl FnMut(&[u8])) {
 #[cfg(test)]
 fn split_v4(buffer: &mut VecDeque<u8>, mut cb: impl FnMut(&[u8])) {
     while let Some(i) = buffer.iter().position(|b| b == &b'\n') {
-        let line = buffer.drain(..=i).take(i - 1).collect::<Vec<_>>();
+        let line = buffer.drain(..=i).collect::<Vec<_>>();
         let mut line_slice = &line[..];
         while line_slice.last() == Some(&b'\n') || line_slice.last() == Some(&b'\r') {
             line_slice = &line_slice[..line_slice.len() - 1];
@@ -316,7 +316,7 @@ fn test_buffer_split_v4() {
     let source = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]);
     let mut buffer: VecDeque<u8> = VecDeque::with_capacity(1024);
     for i in source {
-        buffer.push_front(i);
+        buffer.push_back(i);
     }
     split_v4(&mut buffer, |c| {
         assert_eq!(b"1234567890", c);

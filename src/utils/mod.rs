@@ -7,6 +7,11 @@ pub use self::parse_usize::{
     parse_with_len_v2 as parse_usize_with_len,
 };
 
+pub fn initialize_all(){
+    initialize_hex();
+    initialize_usize();
+}
+
 pub(self) fn get_index_from_str(s: &[u8]) -> usize {
     let len = s.len();
     if cfg!(debug_assertions) && len > 8 {

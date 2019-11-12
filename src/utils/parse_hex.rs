@@ -1,3 +1,4 @@
+use std::sync::Mutex;
 
 #[cfg(test)]
 pub fn parse_v1(buff: &[u8]) -> Option<u8> {
@@ -47,8 +48,12 @@ struct NumCacheEntry {
     val: u8,
 }
 static mut V2_CACHE: NumCache = NumCache::new();
+lazy_static::lazy_static! {
+    static ref V2_CACHE_LOCK: Mutex<()> = Mutex::new(());
+}
 
 pub fn initialize_v2() {
+    let _lock = V2_CACHE_LOCK.lock();
     if unsafe { V2_CACHE.is_initialized() } {
         return;
     }

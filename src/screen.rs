@@ -13,6 +13,7 @@ pub struct Screen {
 #[cfg(test)]
 impl Screen {
     pub fn init() -> Screen {
+        crate::utils::initialize_all();
         Screen {
             buffer: UnsafeCell::new(vec![0u8; 800 * 600 * 3]),
             width: 800,
@@ -51,6 +52,7 @@ pub struct Screen {
 #[cfg(not(test))]
 impl Screen {
     pub fn init() -> Screen {
+        crate::utils::initialize_all();
         let buffer = Framebuffer::new("/dev/fb0").expect("Could not open frame buffer");
 
         let width = buffer.var_screen_info.xres;
