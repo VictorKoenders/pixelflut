@@ -40,11 +40,11 @@ fn test_handle_message_response() {
 }
 
 impl Client {
-    pub fn handle_message_response(
+    pub fn handle_message_response<'a>(
         &self,
-        screen: &Screen,
+        screen: &'a Screen,
         buffer: &[u8],
-    ) -> Result<Cow<'static, [u8]>, ()> {
+    ) -> Result<Cow<'a, [u8]>, ()> {
         handle_message_v3(screen, buffer).ok_or(())
     }
 
@@ -63,7 +63,7 @@ impl Client {
 }
 
 #[cfg(test)]
-fn handle_message_v1(screen: &Screen, buffer: &[u8]) -> Result<&'static [u8], ()> {
+fn handle_message_v1<'a>(screen: &'a Screen, buffer: &[u8]) -> Result<&'a [u8], ()> {
     let str = ::std::str::from_utf8(&buffer).map_err(|_| ())?;
     let mut iter = str.trim().split(' ');
 
@@ -108,7 +108,7 @@ fn handle_message_v1(screen: &Screen, buffer: &[u8]) -> Result<&'static [u8], ()
 }
 
 #[cfg(test)]
-fn handle_message_v2(screen: &Screen, buffer: &[u8]) -> Result<&'static [u8], ()> {
+fn handle_message_v2<'a>(screen: &'a Screen, buffer: &[u8]) -> Result<&'a [u8], ()> {
     match buffer.get(0) {
         Some(b'P') | Some(b'p') => {
             if parse_px(buffer.get(3..)).is_none() {
@@ -149,7 +149,7 @@ fn handle_message_v2(screen: &Screen, buffer: &[u8]) -> Result<&'static [u8], ()
     }
 }
 
-fn handle_message_v3(screen: &Screen, buffer: &[u8]) -> Option<Cow<'static, [u8]>> {
+fn handle_message_v3<'a>(screen: &'a Screen, buffer: &[u8]) -> Option<Cow<'a, [u8]>> {
     use crate::utils::parse_usize_with_len;
     let no_result = Some(Cow::from(Vec::new()));
     // We assume that this is a PX command:

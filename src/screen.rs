@@ -1,28 +1,108 @@
-#[cfg(target_os = "linux")]
+#[cfg(not(test))]
 use framebuffer::Framebuffer;
 use std::cell::UnsafeCell;
 
-static mut FRAME_SIZE_MESSAGE: Vec<u8> = Vec::new();
+#[cfg(test)]
+pub struct Screen {
+    buffer: UnsafeCell<Vec<u8>>,
+    width: usize,
+    height: usize,
+    frame_size_message: Vec<u8>
+}
 
+#[cfg(test)]
+impl Screen {
+    pub fn init() -> Screen {
+        Screen {
+            buffer: UnsafeCell::new(vec![0u8; 800 * 600 * 3]),
+            width: 800,
+            height: 600,
+            frame_size_message: Vec::new()
+        }
+    }
+
+    fn slice(&self) -> &[u8] {
+        unsafe{ &*self.buffer.get() }
+    }
+
+    #[allow(clippy::mut_from_ref)]
+    fn slice_mut(&self) -> &mut [u8] {
+        unsafe{ &mut *self.buffer.get() }
+    }
+
+    fn height(&self) -> usize { self.height }
+    fn width(&self) -> usize { self.width }
+
+    fn line_length(&self) -> usize {
+        self.width * 3
+    }
+
+    fn bytes_per_pixel(&self) -> usize {
+        3
+    }
+}
+
+#[cfg(not(test))]
 pub struct Screen {
     buffer: UnsafeCell<Framebuffer>,
+    frame_size_message: Vec<u8>
+}
+
+#[cfg(not(test))]
+impl Screen {
+    pub fn init() -> Screen {
+        let buffer = Framebuffer::new("/dev/fb0").expect("Could not open frame buffer");
+
+        let width = buffer.var_screen_info.xres;
+        let height = buffer.var_screen_info.yres;
+        let screen = Screen {
+            buffer: UnsafeCell::new(buffer),
+            frame_size_message: format!("SIZE {} {}\n", width, height)
+                .as_bytes()
+                .into(),
+        };
+        println!("Width: {}, height: {}", screen.width(), screen.height());
+        screen
+    }
+
+    #[allow(clippy::mut_from_ref)]
+    fn slice_mut(&self) -> &mut [u8] {
+        unsafe { (&mut *self.buffer.get()).frame.as_mut_slice() }
+    }
+
+    fn slice(&self) -> &[u8] {
+        unsafe { (&mut *self.buffer.get()).frame.as_slice() }
+    }
+
+    fn width(&self) -> usize {
+        unsafe { (&*self.buffer.get()).var_screen_info.xres as usize }
+    }
+
+    fn height(&self) -> usize {
+        unsafe { (&*self.buffer.get()).var_screen_info.yres as usize }
+    }
+
+    fn line_length(&self) -> usize {
+        unsafe { (&*self.buffer.get()).fix_screen_info.line_length as usize }
+    }
+
+    fn bytes_per_pixel(&self) -> usize {
+        unsafe { (&*self.buffer.get()).var_screen_info.bits_per_pixel as usize / 8 }
+    }
+
 }
 
 unsafe impl Send for Screen {}
 unsafe impl Sync for Screen {}
 
 impl Screen {
-    #[allow(clippy::mut_from_ref)]
-    unsafe fn buffer(&self) -> &mut Framebuffer {
-        &mut *self.buffer.get()
-    }
-
     pub fn get_pixel_at(&self, x: usize, y: usize) -> Option<[u8; 3]> {
         if x >= self.width() || y >= self.height() {
             None
         } else {
             let start_index = (y * self.line_length() + x * self.bytes_per_pixel()) as usize;
-            let slice = unsafe { self.buffer().frame.as_slice() };
+            let slice = self.slice();
+            debug_assert!(slice.len() > start_index + 2);
             Some([
                 slice[start_index],
                 slice[start_index + 1],
@@ -33,7 +113,7 @@ impl Screen {
 
     #[cfg(test)]
     pub fn all(&self, color: [u8; 3]) -> bool {
-        let slice = unsafe { self.buffer().frame.as_slice() };
+        let slice = self.slice();
         for (i, chunk) in slice.chunks(3).enumerate() {
             if chunk != &color {
                 println!(
@@ -52,7 +132,7 @@ impl Screen {
             return;
         }
         let start_index = y * self.line_length() + x * self.bytes_per_pixel();
-        let slice = unsafe { self.buffer().frame.as_mut_slice() };
+        let slice = self.slice_mut();
         slice[start_index] = blue;
         slice[start_index + 1] = green;
         slice[start_index + 2] = red;
@@ -66,7 +146,7 @@ impl Screen {
         }
         let start_index = y * self.line_length() + x * self.bytes_per_pixel();
 
-        let slice = unsafe { self.buffer().frame.as_mut_slice() };
+        let slice = self.slice_mut();
         slice[start_index..start_index + 3].clone_from_slice(&bgr);
     }
 
@@ -75,7 +155,8 @@ impl Screen {
             return;
         }
         let start_index = y * self.line_length() + x * self.bytes_per_pixel();
-        let slice = unsafe { self.buffer().frame.as_mut_slice() };
+        let slice = self.slice_mut();
+        debug_assert!(slice.len() > start_index + 2);
         unsafe {
             *slice.get_unchecked_mut(start_index) = blue;
             *slice.get_unchecked_mut(start_index + 1) = green;
@@ -83,47 +164,8 @@ impl Screen {
         }
     }
 
-    pub fn get_size_message(&self) -> &'static [u8] {
-        unsafe { &FRAME_SIZE_MESSAGE }
-    }
-
-    fn width(&self) -> usize {
-        unsafe { self.buffer().var_screen_info.xres as usize }
-    }
-
-    fn height(&self) -> usize {
-        unsafe { self.buffer().var_screen_info.yres as usize }
-    }
-
-    fn line_length(&self) -> usize {
-        unsafe { self.buffer().fix_screen_info.line_length as usize }
-    }
-
-    fn bytes_per_pixel(&self) -> usize {
-        unsafe { self.buffer().var_screen_info.bits_per_pixel as usize / 8 }
-    }
-
-    #[cfg(target_os = "linux")]
-    pub fn init() -> Screen {
-        let buffer = Framebuffer::new("/dev/fb0").expect("Could not open frame buffer");
-
-        let screen = Screen {
-            buffer: UnsafeCell::new(buffer),
-        };
-        println!("Width: {}, height: {}", screen.width(), screen.height());
-        unsafe {
-            FRAME_SIZE_MESSAGE = format!("SIZE {} {}\n", screen.width(), screen.height())
-                .as_bytes()
-                .into();
-        }
-        screen
-    }
-
-    #[cfg(not(target_os = "linux"))]
-    pub fn init() -> Screen {
-        println!("[WARNING] Framebuffer not available on your platform");
-        println!("[WARNING] PixelFlut will not render anything");
-        Screen { _hidden: () }
+    pub fn get_size_message(&self) -> &[u8] {
+        &self.frame_size_message
     }
 
     pub fn render(&self) {}
