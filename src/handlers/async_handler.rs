@@ -5,6 +5,7 @@ use mio_extras::channel::{channel, Receiver, Sender};
 use std::collections::VecDeque;
 use std::io::{Error, ErrorKind, Read, Write};
 use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
 
 pub fn main_loop(
     host: IpAddr,
@@ -16,12 +17,12 @@ pub fn main_loop(
     // let mut clients = HashMap::<Token, Client>::new();
     let mut events = Events::with_capacity(1024);
     let listener = TcpListener::bind(&(host, port).into()).expect("Could not bind listener");
-    let screen = Screen::init();
+    let screen = Arc::new(Screen::init());
 
     let mut threads = Vec::with_capacity(worker_pool_size);
 
     for _ in 0..worker_pool_size {
-        threads.push(Worker::spawn(interrupter.clone()));
+        threads.push(Worker::spawn(screen.clone(), interrupter.clone()));
     }
 
     std::thread::spawn(move || screen_render_loop(screen));
@@ -47,10 +48,10 @@ pub fn main_loop(
 struct Worker(Sender<WorkerTask>);
 
 impl Worker {
-    pub fn spawn(interrupter: Box<dyn super::Interrupter>) -> Worker {
+    pub fn spawn(screen: Arc<Screen>, interrupter: Box<dyn super::Interrupter>) -> Worker {
         let (sender, receiver) = channel();
         std::thread::spawn(move || {
-            Worker::run(receiver, interrupter);
+            Worker::run(screen, receiver, interrupter);
         });
         Worker(sender)
     }
@@ -61,7 +62,11 @@ impl Worker {
             .expect("Could not send incoming tcp stream to worker");
     }
 
-    fn run(receiver: Receiver<WorkerTask>, interrupter: Box<dyn super::Interrupter>) {
+    fn run(
+        screen: Arc<Screen>,
+        receiver: Receiver<WorkerTask>,
+        interrupter: Box<dyn super::Interrupter>,
+    ) {
         let poll = Poll::new().expect("Could not create poll");
         let mut buffer = [0u8; 1024];
         let mut events = Events::with_capacity(1024);
@@ -95,7 +100,7 @@ impl Worker {
                     }
                 } else {
                     let client = &mut clients[event.token().0 - 1].as_mut().unwrap();
-                    let mut is_err = client.read(&mut buffer).is_err();
+                    let mut is_err = client.read(&screen, &mut buffer).is_err();
                     if !is_err {
                         is_err = poll
                             .reregister(
@@ -121,7 +126,7 @@ struct WorkerTask {
     stream: TcpStream,
 }
 
-pub fn screen_render_loop(mut screen: Screen) {
+pub fn screen_render_loop(screen: Arc<Screen>) {
     loop {
         std::thread::sleep(std::time::Duration::from_millis(33));
         screen.render();
@@ -141,7 +146,7 @@ impl Client {
         }
     }
 
-    pub fn read(&mut self, buffer: &mut [u8]) -> Result<(), Error> {
+    pub fn read(&mut self, screen: &Screen, buffer: &mut [u8]) -> Result<(), Error> {
         let mut length = match self.stream.read(buffer) {
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
                 return Ok(());
@@ -171,7 +176,7 @@ impl Client {
             };
 
             let line = self.buffer.drain(..end_of_line).collect::<Vec<_>>();
-            if let Ok(result) = crate::client::Client.handle_message_response(&line) {
+            if let Ok(result) = crate::client::Client.handle_message_response(&screen, &line) {
                 if !result.is_empty() {
                     self.stream.write_all(&result)?;
                 }

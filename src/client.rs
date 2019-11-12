@@ -5,8 +5,6 @@ use crate::utils::parse_usize;
 use std::borrow::Cow;
 use std::io::Write;
 use std::net::TcpStream;
-#[cfg(test)]
-use test::{black_box, Bencher};
 
 const HELP_MESSAGE: &[u8] = br#"Possible commands:
 - PX <x> <y> <rgbhex>: Set the pixel at X/Y the given RGB value. This needs to be a 6-character HEX value, e.g. 000000 for black and FFFFFF for white
@@ -18,12 +16,13 @@ pub struct Client;
 
 #[test]
 fn test_handle_message_response() {
-    let _ = Client.handle_message_response(&[
+    let screen = Screen::init();
+    let _ = Client.handle_message_response(&screen, &[
         0x70, 0x0, 0x0, 0x20, 0x36, 0x31, 0x36, 0x31, 0x35, 0x32, 0x38, 0x35, 0x32, 0x38, 0x31,
         0x36, 0x31, 0x35, 0x32, 0x38, 0x31, 0x32, 0x38, 0x31, 0x20,
     ]);
 
-    let _ = Client.handle_message_response(&[
+    let _ = Client.handle_message_response(&screen, &[
         0x70, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
         0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
         0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30,
@@ -41,12 +40,21 @@ fn test_handle_message_response() {
 }
 
 impl Client {
-    pub fn handle_message_response(&self, buffer: &[u8]) -> Result<Cow<'static, [u8]>, ()> {
-        handle_message_v3(buffer).ok_or(())
+    pub fn handle_message_response(
+        &self,
+        screen: &Screen,
+        buffer: &[u8],
+    ) -> Result<Cow<'static, [u8]>, ()> {
+        handle_message_v3(screen, buffer).ok_or(())
     }
 
-    pub fn handle_message(&self, stream: &mut TcpStream, buffer: &[u8]) -> Result<(), ()> {
-        let slice = handle_message_v3(buffer).ok_or(())?;
+    pub fn handle_message(
+        &self,
+        screen: &Screen,
+        stream: &mut TcpStream,
+        buffer: &[u8],
+    ) -> Result<(), ()> {
+        let slice = handle_message_v3(screen, buffer).ok_or(())?;
         if !slice.is_empty() {
             stream.write_all(&slice).map_err(|_| ())?;
         }
@@ -55,7 +63,7 @@ impl Client {
 }
 
 #[cfg(test)]
-fn handle_message_v1(buffer: &[u8]) -> Result<&'static [u8], ()> {
+fn handle_message_v1(screen: &Screen, buffer: &[u8]) -> Result<&'static [u8], ()> {
     let str = ::std::str::from_utf8(&buffer).map_err(|_| ())?;
     let mut iter = str.trim().split(' ');
 
@@ -81,7 +89,7 @@ fn handle_message_v1(buffer: &[u8]) -> Result<&'static [u8], ()> {
             let green = u8::from_str_radix(&format[2..4], 16).map_err(|_| ())?;
             let blue = u8::from_str_radix(&format[4..], 16).map_err(|_| ())?;
 
-            Screen::set_pixel((x, y), (red, green, blue));
+            screen.set_pixel((x, y), (red, green, blue));
             Ok(&[])
         }
         Some("HELP") => {
@@ -90,7 +98,7 @@ fn handle_message_v1(buffer: &[u8]) -> Result<&'static [u8], ()> {
         }
         Some("SIZE") => {
             // Send screen size
-            Ok(Screen::get_screen_size_message())
+            Ok(screen.get_size_message())
         }
         _ => {
             // ignored FeelsBadMan
@@ -100,7 +108,7 @@ fn handle_message_v1(buffer: &[u8]) -> Result<&'static [u8], ()> {
 }
 
 #[cfg(test)]
-fn handle_message_v2(buffer: &[u8]) -> Result<&'static [u8], ()> {
+fn handle_message_v2(screen: &Screen, buffer: &[u8]) -> Result<&'static [u8], ()> {
     match buffer.get(0) {
         Some(b'P') | Some(b'p') => {
             if parse_px(buffer.get(3..)).is_none() {
@@ -111,14 +119,14 @@ fn handle_message_v2(buffer: &[u8]) -> Result<&'static [u8], ()> {
         }
         Some(b'S') => {
             if buffer.get(1..) == Some(b"IZE") {
-                Ok(Screen::get_screen_size_message())
+                Ok(screen.get_size_message())
             } else {
                 Ok(&[])
             }
         }
         Some(b's') => {
             if buffer.get(1..) == Some(b"ize") {
-                Ok(Screen::get_screen_size_message())
+                Ok(screen.get_size_message())
             } else {
                 Ok(&[])
             }
@@ -141,7 +149,7 @@ fn handle_message_v2(buffer: &[u8]) -> Result<&'static [u8], ()> {
     }
 }
 
-fn handle_message_v3(buffer: &[u8]) -> Option<Cow<'static, [u8]>> {
+fn handle_message_v3(screen: &Screen, buffer: &[u8]) -> Option<Cow<'static, [u8]>> {
     use crate::utils::parse_usize_with_len;
     let no_result = Some(Cow::from(Vec::new()));
     // We assume that this is a PX command:
@@ -159,11 +167,11 @@ fn handle_message_v3(buffer: &[u8]) -> Option<Cow<'static, [u8]>> {
                             parse_hex(remaining.get(2..4)),
                             parse_hex(remaining.get(4..6)),
                         ) {
-                            Screen::set_pixel((x, y), (r, g, b));
+                            screen.set_pixel((x, y), (r, g, b));
                             return no_result;
                         }
 
-                        if let Some(rgb) = Screen::get_pixel_at(x, y) {
+                        if let Some(rgb) = screen.get_pixel_at(x, y) {
                             return Some(
                                 format!(
                                     "PX {} {} {:02X}{:02X}{:02X}\r\n",
@@ -182,14 +190,14 @@ fn handle_message_v3(buffer: &[u8]) -> Option<Cow<'static, [u8]>> {
     match buffer.get(0) {
         Some(b'S') => {
             if buffer.get(1..) == Some(b"IZE") {
-                Some(Screen::get_screen_size_message().into())
+                Some(screen.get_size_message().into())
             } else {
                 no_result
             }
         }
         Some(b's') => {
             if buffer.get(1..) == Some(b"ize") {
-                Some(Screen::get_screen_size_message().into())
+                Some(screen.get_size_message().into())
             } else {
                 no_result
             }
@@ -217,6 +225,7 @@ type PxLocation = ((usize, usize), (u8, u8, u8));
 
 #[cfg(test)]
 fn parse_px(buffer: Option<&[u8]>) -> Option<PxLocation> {
+    let screen = Screen::init();
     let buffer = buffer?;
     let mut iter = buffer.iter();
 
@@ -229,7 +238,7 @@ fn parse_px(buffer: Option<&[u8]>) -> Option<PxLocation> {
     let green = parse_hex(buffer.get(second_index + 4..second_index + 6))?;
     let blue = parse_hex(buffer.get(second_index + 6..second_index + 8))?;
 
-    Screen::set_pixel((x, y), (red, green, blue));
+    screen.set_pixel((x, y), (red, green, blue));
 
     Some(((x, y), (red, green, blue)))
 }
@@ -248,129 +257,144 @@ fn test_parse_px() {
     assert!(parse_px(Some(b"1 2")).is_none());
 }
 
-#[bench]
-fn bench_handle_help_message_v1(b: &mut Bencher) {
-    let bytes: &[&'static [u8]] = &[b"HELP", b"help"];
-    b.iter(|| {
-        for b in bytes.iter() {
-            black_box(handle_message_v1(b).expect("Unexpected error"));
-        }
-    })
-}
+#[cfg(test)]
+mod benches {
+    use test::{black_box, Bencher};
+    use super::*;
 
-#[bench]
-fn bench_handle_size_message_v1(b: &mut Bencher) {
-    let bytes: &[&'static [u8]] = &[b"size", b"SIZE"];
-    b.iter(|| {
-        for b in bytes.iter() {
-            black_box(handle_message_v1(b).expect("Unexpected error"));
-        }
-    })
-}
-
-#[bench]
-fn bench_handle_invalid_px_message_v1(b: &mut Bencher) {
-    let bytes: &[&'static [u8]] = &[b"PX 144 255", b"PX -1 -1 ff0055"];
-    b.iter(|| {
-        for b in bytes.iter() {
-            if black_box(handle_message_v1(b)).is_ok() {
-                panic!("Expected error, got Ok: {:?}", ::std::str::from_utf8(&b));
-            }
-        }
-    })
-}
-
-#[bench]
-fn bench_handle_px_message_v1(b: &mut Bencher) {
-    let bytes: &[&'static [u8]] = &[b"PX 144 255 FF0055", b"px 144 255 ff0055"];
-    b.iter(|| {
-        for b in bytes.iter() {
-            black_box(handle_message_v1(b).expect("Unexpected error"));
-        }
-    })
-}
-
-#[bench]
-fn bench_handle_help_message_v2(b: &mut Bencher) {
-    let bytes: &[&'static [u8]] = &[b"HELP", b"help"];
-    b.iter(|| {
-        for b in bytes.iter() {
-            black_box(handle_message_v2(b).expect("Unexpected error"));
-        }
-    })
-}
-
-#[bench]
-fn bench_handle_size_message_v2(b: &mut Bencher) {
-    let bytes: &[&'static [u8]] = &[b"size", b"SIZE"];
-    b.iter(|| {
-        for b in bytes.iter() {
-            black_box(handle_message_v2(b).expect("Unexpected error"));
-        }
-    })
-}
-
-#[bench]
-fn bench_handle_invalid_px_message_v2(b: &mut Bencher) {
-    let bytes: &[&'static [u8]] = &[b"PX 144 255 ABCDE", b"PX 144", b"px -1 -1 ff0055"];
-    b.iter(|| {
-        for _ in 0..100 {
+    #[bench]
+    fn bench_handle_help_message_v1(b: &mut Bencher) {
+        let screen = Screen::init();
+        let bytes: &[&'static [u8]] = &[b"HELP", b"help"];
+        b.iter(|| {
             for b in bytes.iter() {
-                if black_box(handle_message_v2(b)).is_ok() {
-                    panic!("Should not be okay: {:?}", std::str::from_utf8(b));
+                black_box(handle_message_v1(&screen, b).expect("Unexpected error"));
+            }
+        })
+    }
+
+    #[bench]
+    fn bench_handle_size_message_v1(b: &mut Bencher) {
+        let screen = Screen::init();
+        let bytes: &[&'static [u8]] = &[b"size", b"SIZE"];
+        b.iter(|| {
+            for b in bytes.iter() {
+                black_box(handle_message_v1(&screen, b).expect("Unexpected error"));
+            }
+        })
+    }
+
+    #[bench]
+    fn bench_handle_invalid_px_message_v1(b: &mut Bencher) {
+        let screen = Screen::init();
+        let bytes: &[&'static [u8]] = &[b"PX 144 255", b"PX -1 -1 ff0055"];
+        b.iter(|| {
+            for b in bytes.iter() {
+                if black_box(handle_message_v1(&screen, b)).is_ok() {
+                    panic!("Expected error, got Ok: {:?}", ::std::str::from_utf8(&b));
                 }
             }
-        }
-    })
-}
+        })
+    }
 
-#[bench]
-fn bench_handle_px_message_v2(b: &mut Bencher) {
-    let bytes: &[&'static [u8]] = &[b"PX 144 255 FF0055", b"px 144 255 ff0055"];
-    b.iter(|| {
-        for _ in 0..100 {
+    #[bench]
+    fn bench_handle_px_message_v1(b: &mut Bencher) {
+        let screen = Screen::init();
+        let bytes: &[&'static [u8]] = &[b"PX 144 255 FF0055", b"px 144 255 ff0055"];
+        b.iter(|| {
             for b in bytes.iter() {
-                black_box(handle_message_v2(b).expect("Unexpected error"));
+                black_box(handle_message_v1(&screen, b).expect("Unexpected error"));
             }
-        }
-    });
-}
+        })
+    }
 
-#[test]
-fn test_handle_px_message_v3() {
-    crate::utils::initialize_usize();
-    crate::utils::initialize_hex();
-
-    let _screen = Screen::init();
-    let mut random = rand::thread_rng();
-    for x in 0..640 {
-        for y in 0..480 {
-            use rand::Rng;
-            let r: u8 = random.gen();
-            let g: u8 = random.gen();
-            let b: u8 = random.gen();
-            let msg = format!("PX {} {} {:02X}{:02X}{:02X}", x, y, r, g, b);
-            let result = handle_message_v3(msg.as_bytes()).expect("Expected Some");
-            if !result.is_empty() {
-                panic!("Invalid response: {:?}", std::str::from_utf8(&result));
+    #[bench]
+    fn bench_handle_help_message_v2(b: &mut Bencher) {
+        let screen = Screen::init();
+        let bytes: &[&'static [u8]] = &[b"HELP", b"help"];
+        b.iter(|| {
+            for b in bytes.iter() {
+                black_box(handle_message_v2(&screen, b).expect("Unexpected error"));
             }
+        })
+    }
 
-            let color = Screen::get_pixel_at(x, y).expect("Could not get pixel");
-            assert_eq!(b, color[0]);
-            assert_eq!(g, color[1]);
-            assert_eq!(r, color[2]);
+    #[bench]
+    fn bench_handle_size_message_v2(b: &mut Bencher) {
+        let screen = Screen::init();
+        let bytes: &[&'static [u8]] = &[b"size", b"SIZE"];
+        b.iter(|| {
+            for b in bytes.iter() {
+                black_box(handle_message_v2(&screen, b).expect("Unexpected error"));
+            }
+        })
+    }
+
+    #[bench]
+    fn bench_handle_invalid_px_message_v2(b: &mut Bencher) {
+        let screen = Screen::init();
+        let bytes: &[&'static [u8]] = &[b"PX 144 255 ABCDE", b"PX 144", b"px -1 -1 ff0055"];
+        b.iter(|| {
+            for _ in 0..100 {
+                for b in bytes.iter() {
+                    if black_box(handle_message_v2(&screen, b)).is_ok() {
+                        panic!("Should not be okay: {:?}", std::str::from_utf8(b));
+                    }
+                }
+            }
+        })
+    }
+
+    #[bench]
+    fn bench_handle_px_message_v2(b: &mut Bencher) {
+        let screen = Screen::init();
+        let bytes: &[&'static [u8]] = &[b"PX 144 255 FF0055", b"px 144 255 ff0055"];
+        b.iter(|| {
+            for _ in 0..100 {
+                for b in bytes.iter() {
+                    black_box(handle_message_v2(&screen, b).expect("Unexpected error"));
+                }
+            }
+        });
+    }
+
+    #[test]
+    fn test_handle_px_message_v3() {
+        crate::utils::initialize_usize();
+        crate::utils::initialize_hex();
+
+        let screen = Screen::init();
+        let mut random = rand::thread_rng();
+        for x in 0..640 {
+            for y in 0..480 {
+                use rand::Rng;
+                let r: u8 = random.gen();
+                let g: u8 = random.gen();
+                let b: u8 = random.gen();
+                let msg = format!("PX {} {} {:02X}{:02X}{:02X}", x, y, r, g, b);
+                let result = handle_message_v3(&screen, msg.as_bytes()).expect("Expected Some");
+                if !result.is_empty() {
+                    panic!("Invalid response: {:?}", std::str::from_utf8(&result));
+                }
+
+                let color = screen.get_pixel_at(x, y).expect("Could not get pixel");
+                assert_eq!(b, color[0]);
+                assert_eq!(g, color[1]);
+                assert_eq!(r, color[2]);
+            }
         }
     }
-}
 
-#[bench]
-fn bench_handle_px_message_v3(b: &mut Bencher) {
-    let bytes: &[&'static [u8]] = &[b"PX 144 255 FF0055", b"px 144 255 ff0055"];
-    b.iter(|| {
-        for _ in 0..100 {
-            for b in bytes.iter() {
-                black_box(handle_message_v3(b).expect("Unexpected error"));
+    #[bench]
+    fn bench_handle_px_message_v3(b: &mut Bencher) {
+        let screen = Screen::init();
+        let bytes: &[&'static [u8]] = &[b"PX 144 255 FF0055", b"px 144 255 ff0055"];
+        b.iter(|| {
+            for _ in 0..100 {
+                for b in bytes.iter() {
+                    black_box(handle_message_v3(&screen, b).expect("Unexpected error"));
+                }
             }
-        }
-    });
+        });
+    }
 }

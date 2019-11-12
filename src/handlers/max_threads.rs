@@ -3,13 +3,15 @@ use crate::screen::Screen;
 use crate::Result;
 use std::io::Read;
 use std::net::{IpAddr, TcpListener, TcpStream};
+use std::sync::Arc;
 use std::thread::{sleep, spawn};
 use std::time::Duration;
 
 pub fn main_loop(host: IpAddr, port: u16, interrupter: &dyn super::Interrupter) {
-    let mut screen = Screen::init();
+    let screen = Arc::new(Screen::init());
 
-    spawn(move || render_loop(&mut screen));
+    let screen_clone = screen.clone();
+    spawn(move || render_loop(screen_clone));
 
     let listener = TcpListener::bind((host, port))
         .unwrap_or_else(|e| panic!("Could not listen on {}:{}: {:?}", host, port, e));
@@ -19,13 +21,14 @@ pub fn main_loop(host: IpAddr, port: u16, interrupter: &dyn super::Interrupter) 
         let (socket, _) = listener
             .accept()
             .expect("Could not accept new TCP connection");
-        spawn(|| {
-            let _ = run_client(socket);
+        let screen_clone = screen.clone();
+        spawn(move || {
+            let _ = run_client(screen_clone, socket);
         });
     }
 }
 
-fn render_loop(screen: &mut Screen) {
+fn render_loop(screen: Arc<Screen>) {
     loop {
         screen.render();
         sleep(Duration::from_millis(33));
@@ -127,7 +130,7 @@ impl StreamReader {
     }
 }
 
-fn run_client(mut socket: TcpStream) -> Result<()> {
+fn run_client(screen: Arc<Screen>, mut socket: TcpStream) -> Result<()> {
     let mut reader = StreamReader::default();
     loop {
         let len = socket
@@ -137,7 +140,7 @@ fn run_client(mut socket: TcpStream) -> Result<()> {
             break;
         }
         reader.parse_contents(len, |buff| {
-            let _ = Client.handle_message(&mut socket, buff);
+            let _ = Client.handle_message(&screen, &mut socket, buff);
         });
     }
     Ok(())

@@ -1,4 +1,4 @@
-#![feature(const_vec_new, test)]
+#![cfg_attr(test, feature(test))]
 
 #[cfg_attr(test, macro_use)]
 #[cfg(test)]

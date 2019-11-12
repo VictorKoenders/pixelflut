@@ -22,3 +22,5 @@ lto = true
 
 [target."cfg(target_os=\"linux\")".dependencies]
 framebuffer = "0.1"
+memmap = "0.5" # dependent on framebuffer
+

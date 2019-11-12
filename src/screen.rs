@@ -1,114 +1,122 @@
 #[cfg(target_os = "linux")]
 use framebuffer::Framebuffer;
+use std::cell::UnsafeCell;
 
-static mut FRAME: Vec<u8> = Vec::new();
-static mut FRAME_WIDTH: usize = 0;
-static mut FRAME_HEIGHT: usize = 0;
 static mut FRAME_SIZE_MESSAGE: Vec<u8> = Vec::new();
-static mut FRAME_LINE_LENGTH: usize = 0;
-static mut FRAME_BYTES_PER_PIXEL: usize = 0;
 
-#[cfg(target_os = "linux")]
 pub struct Screen {
-    buffer: Framebuffer,
+    buffer: UnsafeCell<Framebuffer>,
 }
 
-#[cfg(not(target_os = "linux"))]
-pub struct Screen {
-    _hidden: (),
-}
+unsafe impl Send for Screen {}
+unsafe impl Sync for Screen {}
 
 impl Screen {
-    pub fn get_pixel_at(x: usize, y: usize) -> Option<&'static [u8]> {
-        unsafe {
-            if x >= FRAME_WIDTH || y >= FRAME_HEIGHT {
-                None
-            } else {
-                let start_index = (y * FRAME_LINE_LENGTH + x * FRAME_BYTES_PER_PIXEL) as usize;
-                Some(&FRAME[start_index..start_index + 3])
-            }
+    #[allow(clippy::mut_from_ref)]
+    unsafe fn buffer(&self) -> &mut Framebuffer {
+        &mut *self.buffer.get()
+    }
+
+    pub fn get_pixel_at(&self, x: usize, y: usize) -> Option<[u8; 3]> {
+        if x >= self.width() || y >= self.height() {
+            None
+        } else {
+            let start_index = (y * self.line_length() + x * self.bytes_per_pixel()) as usize;
+            let slice = unsafe { self.buffer().frame.as_slice() };
+            Some([
+                slice[start_index],
+                slice[start_index + 1],
+                slice[start_index + 2],
+            ])
         }
     }
 
     #[cfg(test)]
-    pub fn all(slice: [u8; 3]) -> bool {
-        unsafe {
-            for i in 0..FRAME.len() / 3 {
-                let i = i * 3;
-                if FRAME[i..i + 3] != slice[..] {
-                    println!(
-                        "position {} does not match: {:?} (expected {:?})",
-                        i,
-                        &FRAME[i..i + 3],
-                        &slice[..]
-                    );
-                    return false;
-                }
+    pub fn all(&self, color: [u8; 3]) -> bool {
+        let slice = unsafe { self.buffer().frame.as_slice() };
+        for (i, chunk) in slice.chunks(3).enumerate() {
+            if chunk != &color {
+                println!(
+                    "position {} does not match: {:?} (expected {:?})",
+                    i, chunk, color
+                );
+                return false;
             }
         }
         true
     }
 
     #[cfg(test)]
-    pub fn set_pixel_v1((x, y): (usize, usize), (red, green, blue): (u8, u8, u8)) {
-        unsafe {
-            if x >= FRAME_WIDTH || y >= FRAME_HEIGHT {
-                return;
-            }
-            let start_index = (y * FRAME_LINE_LENGTH + x * FRAME_BYTES_PER_PIXEL) as usize;
-            FRAME[start_index] = blue;
-            FRAME[start_index + 1] = green;
-            FRAME[start_index + 2] = red;
+    pub fn set_pixel_v1(&self, (x, y): (usize, usize), (red, green, blue): (u8, u8, u8)) {
+        if x >= self.width() || y >= self.height() {
+            return;
         }
+        let start_index = y * self.line_length() + x * self.bytes_per_pixel();
+        let slice = unsafe { self.buffer().frame.as_mut_slice() };
+        slice[start_index] = blue;
+        slice[start_index + 1] = green;
+        slice[start_index + 2] = red;
     }
 
     #[cfg(test)]
     #[inline]
-    pub fn set_pixel_v2((x, y): (usize, usize), bgr: [u8; 3]) {
+    pub fn set_pixel_v2(&self, (x, y): (usize, usize), bgr: [u8; 3]) {
+        if x >= self.width() || y >= self.height() {
+            return;
+        }
+        let start_index = y * self.line_length() + x * self.bytes_per_pixel();
+
+        let slice = unsafe { self.buffer().frame.as_mut_slice() };
+        slice[start_index..start_index + 3].clone_from_slice(&bgr);
+    }
+
+    pub fn set_pixel(&self, (x, y): (usize, usize), (red, green, blue): (u8, u8, u8)) {
+        if x >= self.width() || y >= self.height() {
+            return;
+        }
+        let start_index = y * self.line_length() + x * self.bytes_per_pixel();
+        let slice = unsafe { self.buffer().frame.as_mut_slice() };
         unsafe {
-            if x >= FRAME_WIDTH || y >= FRAME_HEIGHT {
-                return;
-            }
-            let start_index = (y * FRAME_LINE_LENGTH + x * FRAME_BYTES_PER_PIXEL) as usize;
-            FRAME[start_index..start_index + 3].clone_from_slice(&bgr);
+            *slice.get_unchecked_mut(start_index) = blue;
+            *slice.get_unchecked_mut(start_index + 1) = green;
+            *slice.get_unchecked_mut(start_index + 2) = red;
         }
     }
 
-    pub fn set_pixel((x, y): (usize, usize), (red, green, blue): (u8, u8, u8)) {
-        unsafe {
-            if x >= FRAME_WIDTH || y >= FRAME_HEIGHT {
-                return;
-            }
-            let start_index = y * FRAME_LINE_LENGTH as usize + x * FRAME_BYTES_PER_PIXEL as usize;
-            *FRAME.get_unchecked_mut(start_index) = blue;
-            *FRAME.get_unchecked_mut(start_index + 1) = green;
-            *FRAME.get_unchecked_mut(start_index + 2) = red;
-        }
-    }
-
-    pub fn get_screen_size_message() -> &'static [u8] {
+    pub fn get_size_message(&self) -> &'static [u8] {
         unsafe { &FRAME_SIZE_MESSAGE }
+    }
+
+    fn width(&self) -> usize {
+        unsafe { self.buffer().var_screen_info.xres as usize }
+    }
+
+    fn height(&self) -> usize {
+        unsafe { self.buffer().var_screen_info.yres as usize }
+    }
+
+    fn line_length(&self) -> usize {
+        unsafe { self.buffer().fix_screen_info.line_length as usize }
+    }
+
+    fn bytes_per_pixel(&self) -> usize {
+        unsafe { self.buffer().var_screen_info.bits_per_pixel as usize / 8 }
     }
 
     #[cfg(target_os = "linux")]
     pub fn init() -> Screen {
         let buffer = Framebuffer::new("/dev/fb0").expect("Could not open frame buffer");
 
-        let width = buffer.var_screen_info.xres as usize;
-        let height = buffer.var_screen_info.yres as usize;
-        let line_length = buffer.fix_screen_info.line_length as usize;
-        let bytes_per_pixel = buffer.var_screen_info.bits_per_pixel as usize / 8;
-        println!("width: {}, height: {}", width, height);
-
+        let screen = Screen {
+            buffer: UnsafeCell::new(buffer),
+        };
+        println!("Width: {}, height: {}", screen.width(), screen.height());
         unsafe {
-            FRAME = vec![0u8; line_length * height];
-            FRAME_WIDTH = width;
-            FRAME_HEIGHT = height;
-            FRAME_LINE_LENGTH = line_length;
-            FRAME_BYTES_PER_PIXEL = bytes_per_pixel;
-            FRAME_SIZE_MESSAGE = format!("SIZE {} {}\n", width, height).as_bytes().into();
+            FRAME_SIZE_MESSAGE = format!("SIZE {} {}\n", screen.width(), screen.height())
+                .as_bytes()
+                .into();
         }
-        Screen { buffer }
+        screen
     }
 
     #[cfg(not(target_os = "linux"))]
@@ -118,13 +126,7 @@ impl Screen {
         Screen { _hidden: () }
     }
 
-    #[cfg(target_os = "linux")]
-    pub fn render(&mut self) {
-        self.buffer.write_frame(unsafe { &FRAME });
-    }
-
-    #[cfg(not(target_os = "linux"))]
-    pub fn render(&mut self) {}
+    pub fn render(&self) {}
 }
 
 macro_rules! bench_set_pixel {
@@ -136,7 +138,7 @@ macro_rules! bench_set_pixel {
             #[cfg(test)]
             #[bench]
             pub fn bench(b: &mut test::Bencher) {
-                let mut _screen = super::Screen::init();
+                let screen = super::Screen::init();
                 b.iter(|| {
                     for r in 0..10 {
                         for g in 0..10 {
@@ -144,6 +146,7 @@ macro_rules! bench_set_pixel {
                                 for x in 0..10 {
                                     for y in 0..10 {
                                         bench_set_pixel!(
+                                            screen,
                                             impl $fn_name,
                                             $bracket_style,
                                             x,
@@ -161,11 +164,11 @@ macro_rules! bench_set_pixel {
             }
         }
     };
-    (impl $fn_name:ident, (), $x:expr, $y:expr, $r:expr, $g:expr, $b:expr) => {
-        super::Screen::$fn_name(($x, $y), ($r, $g, $b))
+    ($screen:expr, impl $fn_name:ident, (), $x:expr, $y:expr, $r:expr, $g:expr, $b:expr) => {
+        $screen.$fn_name(($x, $y), ($r, $g, $b))
     };
-    (impl $fn_name:ident, [], $x:expr, $y:expr, $r:expr, $g:expr, $b:expr) => {
-        super::Screen::$fn_name(($x, $y), [$r, $g, $b])
+    ($screen:expr, impl $fn_name:ident, [], $x:expr, $y:expr, $r:expr, $g:expr, $b:expr) => {
+        $screen.$fn_name(($x, $y), [$r, $g, $b])
     };
 }
 

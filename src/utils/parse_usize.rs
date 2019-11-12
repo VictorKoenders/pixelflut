@@ -1,7 +1,5 @@
 #[cfg(test)]
 use hashbrown::HashMap;
-#[cfg(test)]
-use test::{black_box, Bencher};
 
 const MAX_VALID_NUMBER: usize = 1920;
 
@@ -192,52 +190,61 @@ fn validate_parse_v3() {
     }
 }
 
-#[bench]
-fn bench_parse_v1(b: &mut Bencher) {
-    let u = b"640";
-    b.iter(|| {
-        let u = black_box(u);
-        for _ in 0..100_000 {
-            let u = parse_v1(&u[..]).unwrap();
-            black_box(u);
-        }
-    });
-}
-
-#[bench]
-fn bench_parse_v2(b: &mut Bencher) {
-    let u = b"640";
-    initialize_v2_cache();
-    b.iter(|| {
-        let u = black_box(u);
-        for _ in 0..100_000 {
-            let u = parse_v2(&u[..]).unwrap();
-            black_box(u);
-        }
-    });
-}
-#[bench]
-fn bench_parse_v3(b: &mut Bencher) {
-    let u = b"640";
-    initialize_v3_cache();
-    b.iter(|| {
-        let u = black_box(u);
-        for _ in 0..100_000 {
-            let u = parse_v3(&u[..]).unwrap();
-            black_box(u);
-        }
-    });
-}
 #[cfg(test)]
-#[bench]
-fn bench_parse_std(b: &mut Bencher) {
-    let u = b"640";
-    b.iter(|| {
-        let u = black_box(u);
-        for _ in 0..100_000 {
-            let str = ::std::str::from_utf8(u).unwrap();
-            let u: usize = str.parse().unwrap();
-            black_box(u);
-        }
-    });
+mod benches {
+    #[cfg(test)]
+    use test::{black_box, Bencher};
+
+    use super::*;
+
+    #[bench]
+    fn bench_parse_v1(b: &mut Bencher) {
+        let u = b"640";
+        b.iter(|| {
+            let u = black_box(u);
+            for _ in 0..100_000 {
+                let u = parse_v1(&u[..]).unwrap();
+                black_box(u);
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_parse_v2(b: &mut Bencher) {
+        let u = b"640";
+        initialize_v2_cache();
+        b.iter(|| {
+            let u = black_box(u);
+            for _ in 0..100_000 {
+                let u = parse_v2(&u[..]).unwrap();
+                black_box(u);
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_parse_v3(b: &mut Bencher) {
+        let u = b"640";
+        initialize_v3_cache();
+        b.iter(|| {
+            let u = black_box(u);
+            for _ in 0..100_000 {
+                let u = parse_v3(&u[..]).unwrap();
+                black_box(u);
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_parse_std(b: &mut Bencher) {
+        let u = b"640";
+        b.iter(|| {
+            let u = black_box(u);
+            for _ in 0..100_000 {
+                let str = ::std::str::from_utf8(u).unwrap();
+                let u: usize = str.parse().unwrap();
+                black_box(u);
+            }
+        });
+    }
 }

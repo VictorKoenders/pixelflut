@@ -4,12 +4,12 @@ use std::io::{ErrorKind, Read, Write};
 use std::net::{IpAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
-use std::sync::Arc;
 use std::thread::spawn;
 use time;
 
 #[cfg(test)]
 use std::collections::VecDeque;
+use std::sync::Arc;
 
 pub struct Handle {
     counter: Arc<AtomicUsize>,
@@ -22,12 +22,12 @@ pub enum HandlerNotify {
 }
 
 impl Handle {
-    pub fn new(interrupter: Box<dyn super::Interrupter>) -> Handle {
+    pub fn new(screen: Arc<Screen>, interrupter: Box<dyn super::Interrupter>) -> Handle {
         let (sender, receiver) = channel();
         let counter = Arc::new(AtomicUsize::new(0));
         let counter_clone = counter.clone();
         let handle = spawn(move || {
-            run(&receiver, &counter_clone, interrupter);
+            run(screen, &receiver, &counter_clone, interrupter);
         });
         Handle {
             counter,
@@ -52,6 +52,7 @@ impl Handle {
 }
 
 fn run(
+    screen: Arc<Screen>,
     receiver: &Receiver<HandlerNotify>,
     counter: &Arc<AtomicUsize>,
     interrupter: Box<dyn super::Interrupter>,
@@ -106,7 +107,7 @@ fn run(
             // TODO: Figure out a way to do this more in-place
             client_buffer.extend_from_slice(&buffer[..len]);
             let remaining = split(&client_buffer, |cmd| {
-                let _ = Client.handle_message(stream, cmd);
+                let _ = Client.handle_message(&screen, stream, cmd);
             });
             *client_buffer = remaining;
             client_buffer.truncate(100);
@@ -118,7 +119,7 @@ const FRAME_DURATION_NS: u64 = 1_000_000_000 / 30;
 
 pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize, interrupter: &dyn super::Interrupter) {
     let listener = TcpListener::bind((host, port)).expect("Could not bind on port 1234");
-    let mut screen = Screen::init();
+    let screen = Arc::new(Screen::init());
 
     listener
         .set_nonblocking(true)
@@ -133,7 +134,7 @@ pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize, interrupter: &dyn sup
     let handler_count = num_cpus - 1;
     let mut handles = Vec::with_capacity(handler_count);
     for _ in 0..handler_count {
-        handles.push(Handle::new(interrupter.clone()));
+        handles.push(Handle::new(screen.clone(), interrupter.clone()));
     }
 
     let mut target_next_frame_time = time::precise_time_ns();
@@ -227,6 +228,7 @@ macro_rules! test_and_bench {
         test_and_bench!($fn_name, $fn_name);
     };
     ($mod_name:ident, $fn_name:ident) => {
+        #[cfg(test)]
         pub mod $mod_name {
 
             #[bench]
@@ -256,18 +258,6 @@ macro_rules! test_and_bench {
 test_and_bench!(split_v1);
 test_and_bench!(split_v2, split);
 
-#[bench]
-fn bench_buffer_split_v3(b: &mut ::test::Bencher) {
-    let vec: Vec<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n"[..]);
-    b.iter(|| {
-        let mut cloned = vec.clone();
-        split_v3(&mut cloned, |c| {
-            ::test::black_box(c);
-        });
-        ::test::black_box(cloned);
-    });
-}
-
 #[test]
 fn test_buffer_split_v3() {
     let mut buffer = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]);
@@ -277,32 +267,50 @@ fn test_buffer_split_v3() {
     assert_eq!(&b"123"[..], buffer.as_slice());
 }
 
-#[bench]
-fn bench_buffer_split_v4(b: &mut ::test::Bencher) {
-    let buffer: VecDeque<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]).into();
-    b.iter(|| {
-        let mut cloned: VecDeque<u8> = buffer.clone();
-        split_v4(&mut cloned, |c| {
-            ::test::black_box(c);
+#[cfg(test)]
+mod benches {
+    use super::*;
+
+    #[bench]
+    fn bench_buffer_split_v3(b: &mut ::test::Bencher) {
+        let vec: Vec<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n"[..]);
+        b.iter(|| {
+            let mut cloned = vec.clone();
+            split_v3(&mut cloned, |c| {
+                ::test::black_box(c);
+            });
+            ::test::black_box(cloned);
         });
-        ::test::black_box(cloned);
-    });
-}
-#[bench]
-fn bench_buffer_split_v4_push_front(b: &mut ::test::Bencher) {
-    let source = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]);
-    let mut buffer: VecDeque<u8> = VecDeque::with_capacity(1024);
-    for i in source {
-        buffer.push_front(i);
     }
-    b.iter(|| {
-        let mut cloned: VecDeque<u8> = buffer.clone();
-        split_v4(&mut cloned, |c| {
-            ::test::black_box(c);
+
+    #[bench]
+    fn bench_buffer_split_v4(b: &mut ::test::Bencher) {
+        let buffer: VecDeque<u8> = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]).into();
+        b.iter(|| {
+            let mut cloned: VecDeque<u8> = buffer.clone();
+            split_v4(&mut cloned, |c| {
+                ::test::black_box(c);
+            });
+            ::test::black_box(cloned);
         });
-        ::test::black_box(cloned);
-    });
+    }
+    #[bench]
+    fn bench_buffer_split_v4_push_front(b: &mut ::test::Bencher) {
+        let source = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]);
+        let mut buffer: VecDeque<u8> = VecDeque::with_capacity(1024);
+        for i in source {
+            buffer.push_front(i);
+        }
+        b.iter(|| {
+            let mut cloned: VecDeque<u8> = buffer.clone();
+            split_v4(&mut cloned, |c| {
+                ::test::black_box(c);
+            });
+            ::test::black_box(cloned);
+        });
+    }
 }
+
 #[test]
 fn test_buffer_split_v4() {
     let source = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]);

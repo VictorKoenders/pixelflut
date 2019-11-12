@@ -28,7 +28,7 @@ fn do_test<F>(f: F)
 where
     F: Fn(&dyn Interrupter, u16) + std::marker::Send + 'static,
 {
-    Screen::init();
+    let screen = Screen::init();
     let mut rng = thread_rng();
     let interrupter = TestInterrupter {
         val: Arc::new(AtomicBool::new(true)),
@@ -59,7 +59,7 @@ where
 
     println!("Screen size {}x{}", width, height);
 
-    assert_eq!(Screen::get_pixel_at(50, 50), Some(&[0, 0, 0][..]));
+    assert_eq!(screen.get_pixel_at(50, 50), Some([0, 0, 0]));
     for (command, expected) in &[
         ("FF0000", [0, 0, 255]),
         ("00FF00", [0, 255, 0]),
@@ -70,7 +70,7 @@ where
             .write_all(command.as_bytes())
             .expect("Could not send PX command");
         std::thread::sleep(std::time::Duration::from_millis(100));
-        assert_eq!(Screen::get_pixel_at(50, 50), Some(&expected[..]));
+        assert_eq!(screen.get_pixel_at(50, 50), Some(*expected));
     }
 
     println!("Filling entire screen, this might take a while...");
@@ -87,7 +87,7 @@ where
     std::thread::sleep(std::time::Duration::from_millis(5000));
     println!("Checking if all pixels are white");
 
-    assert!(Screen::all([255, 255, 255]));
+    assert!(screen.all([255, 255, 255]));
     println!("Interrupting test");
     interrupter.val.store(false, Ordering::Relaxed);
     println!("Done!");
