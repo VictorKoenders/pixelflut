@@ -7,7 +7,7 @@ pub struct Screen {
     buffer: UnsafeCell<Vec<u8>>,
     width: usize,
     height: usize,
-    frame_size_message: Vec<u8>
+    frame_size_message: Vec<u8>,
 }
 
 #[cfg(test)]
@@ -18,21 +18,25 @@ impl Screen {
             buffer: UnsafeCell::new(vec![0u8; 800 * 600 * 3]),
             width: 800,
             height: 600,
-            frame_size_message: Vec::new()
+            frame_size_message: Vec::new(),
         }
     }
 
     fn slice(&self) -> &[u8] {
-        unsafe{ &*self.buffer.get() }
+        unsafe { &*self.buffer.get() }
     }
 
     #[allow(clippy::mut_from_ref)]
     fn slice_mut(&self) -> &mut [u8] {
-        unsafe{ &mut *self.buffer.get() }
+        unsafe { &mut *self.buffer.get() }
     }
 
-    fn height(&self) -> usize { self.height }
-    fn width(&self) -> usize { self.width }
+    fn height(&self) -> usize {
+        self.height
+    }
+    fn width(&self) -> usize {
+        self.width
+    }
 
     fn line_length(&self) -> usize {
         self.width * 3
@@ -46,7 +50,7 @@ impl Screen {
 #[cfg(not(test))]
 pub struct Screen {
     buffer: UnsafeCell<Framebuffer>,
-    frame_size_message: Vec<u8>
+    frame_size_message: Vec<u8>,
 }
 
 #[cfg(not(test))]
@@ -59,9 +63,7 @@ impl Screen {
         let height = buffer.var_screen_info.yres;
         let screen = Screen {
             buffer: UnsafeCell::new(buffer),
-            frame_size_message: format!("SIZE {} {}\n", width, height)
-                .as_bytes()
-                .into(),
+            frame_size_message: format!("SIZE {} {}\n", width, height).as_bytes().into(),
         };
         println!("Width: {}, height: {}", screen.width(), screen.height());
         screen
@@ -91,7 +93,6 @@ impl Screen {
     fn bytes_per_pixel(&self) -> usize {
         unsafe { (&*self.buffer.get()).var_screen_info.bits_per_pixel as usize / 8 }
     }
-
 }
 
 unsafe impl Send for Screen {}

@@ -32,6 +32,18 @@ Each incoming connection gets distributed over the different threads. Each threa
 
 This uses [mio](https://docs.rs/mio) as an abstraction layer over the different OS implementations (epoll, IOCP and kqueue).
 
+## Features
+You can tweak the pixelflut server with compile-time features. Below is an exhaustive list of all features.
+
+To disable default features, pass `--no-default-features` to cargo. To enable a features `a` and `b`, add `--features "a b"`.
+
+Example: `cargo run --release --no-default-features --features "memcache" -- max_threads`
+
+| Feature | Default? | Description |
+| --- | --- | --- |
+| memcache | Y | Enables in-memory caching of all parsing operations. This allocates a lot of memory at startup (~5GB), but makes the server parse incoming messages faster |
+
+
 ## Issues and server configuration
 Several issues can occur when running the server. These issues are outlined below. When you encounter an issue while running this server, please let us know.
 

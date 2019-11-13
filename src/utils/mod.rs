@@ -1,13 +1,13 @@
 mod parse_hex;
 mod parse_usize;
 
-pub use self::parse_hex::{initialize_v2 as initialize_hex, parse_v2 as parse_hex};
+pub use self::parse_hex::{initialize as initialize_hex, parse as parse_hex};
 pub use self::parse_usize::{
-    initialize_v2_cache as initialize_usize, parse_v2 as parse_usize,
-    parse_with_len_v2 as parse_usize_with_len,
+    initialize_cache as initialize_usize, parse as parse_usize,
+    parse_with_len as parse_usize_with_len,
 };
 
-pub fn initialize_all(){
+pub fn initialize_all() {
     initialize_hex();
     initialize_usize();
 }
