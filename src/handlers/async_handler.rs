@@ -14,7 +14,6 @@ pub fn main_loop(
     interrupter: &dyn super::Interrupter,
 ) {
     let poll = Poll::new().expect("Could not create poll");
-    // let mut clients = HashMap::<Token, Client>::new();
     let mut events = Events::with_capacity(1024);
     let listener = TcpListener::bind(&(host, port).into()).expect("Could not bind listener");
     let screen = Arc::new(Screen::init());

@@ -71,27 +71,27 @@ impl Screen {
 
     #[allow(clippy::mut_from_ref)]
     fn slice_mut(&self) -> &mut [u8] {
-        unsafe { (&mut *self.buffer.get()).frame.as_mut_slice() }
+        unsafe { (*self.buffer.get()).frame.as_mut_slice() }
     }
 
     fn slice(&self) -> &[u8] {
-        unsafe { (&mut *self.buffer.get()).frame.as_slice() }
+        unsafe { (*self.buffer.get()).frame.as_slice() }
     }
 
     fn width(&self) -> usize {
-        unsafe { (&*self.buffer.get()).var_screen_info.xres as usize }
+        unsafe { (*self.buffer.get()).var_screen_info.xres as usize }
     }
 
     fn height(&self) -> usize {
-        unsafe { (&*self.buffer.get()).var_screen_info.yres as usize }
+        unsafe { (*self.buffer.get()).var_screen_info.yres as usize }
     }
 
     fn line_length(&self) -> usize {
-        unsafe { (&*self.buffer.get()).fix_screen_info.line_length as usize }
+        unsafe { (*self.buffer.get()).fix_screen_info.line_length as usize }
     }
 
     fn bytes_per_pixel(&self) -> usize {
-        unsafe { (&*self.buffer.get()).var_screen_info.bits_per_pixel as usize / 8 }
+        unsafe { (*self.buffer.get()).var_screen_info.bits_per_pixel as usize / 8 }
     }
 }
 
