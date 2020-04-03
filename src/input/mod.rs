@@ -1,6 +1,9 @@
 mod max_threads;
-mod tokio;
 pub use self::max_threads::MaxThreads;
+
+#[cfg(feature = "tokio")]
+mod tokio;
+#[cfg(feature = "tokio")]
 pub use self::tokio::Tokio;
 
 use crate::config::Config;

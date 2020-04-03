@@ -1,4 +1,6 @@
+#[cfg(feature = "memcache")]
 mod memcache;
+#[cfg(feature = "memcache")]
 pub use self::memcache::MemCache;
 
 use crate::config::Config;

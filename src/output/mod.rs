@@ -1,6 +1,8 @@
+#[cfg(feature = "minifb")]
 mod minifb;
-
+#[cfg(feature = "minifb")]
 pub use self::minifb::MiniFb;
+
 use crate::config::Config;
 
 pub trait Screen {

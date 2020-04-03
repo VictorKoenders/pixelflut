@@ -5,7 +5,8 @@ authors = ["Trangar <victor.koenders@gmail.com>"]
 edition = "2018"
 
 [features]
-default = ["minifb", "tokio", "framebuffer"]
+default = ["minifb", "tokio", "framebuffer", "memcache"]
+memcache = []
 
 [dependencies]
 rand = "0.7"
