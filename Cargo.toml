@@ -1,0 +1,36 @@
+[package]
+name = "pixelflut"
+version = "0.1.0"
+authors = ["Trangar <victor.koenders@gmail.com>"]
+edition = "2018"
+
+[features]
+default = ["minifb", "tokio", "framebuffer"]
+
+[dependencies]
+rand = "0.7"
+byteorder = "1.3"
+num_cpus = "1.12"
+afl = "0.6"
+
+# framebuffer is a crate that allows us to render to a terminal on the server
+[dependencies.framebuffer]
+version = "0.2"
+optional = true # only enabled with the "framebuffer" feature
+
+# minifb is a simple windowing crate that acts like a unix framebuffer
+[dependencies.minifb]
+version = "0.15"
+optional = true # only enabled with the "minifb" feature
+
+# Tokio is the go-to framework for asynchronous rust applications
+[dependencies.tokio]
+version = "0.2"
+optional = true # only enabled with the "tokio" feature
+default-features = false
+features = [
+    "rt-threaded", # Enables the heavier, multi-threaded, work-stealing scheduler.
+    "io-driver",
+    "tcp",
+    "io-util" # Needed for AsyncReadExt and AsyncWriteExt
+]
