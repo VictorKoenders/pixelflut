@@ -13,18 +13,43 @@ HELP - Sends this helptext
 SIZE - Get the size of the screen
 ";
 
-const MEMCACHE_BUFFER_SIZE: usize = 10000;
+static mut MEMCACHE_BUFFER_SIZE: usize = 10000;
+
+#[cfg(target_os = "linux")]
+fn set_memcache_buffer() {
+    use std::fs::File;
+    use std::io::Read;
+    let mut file = File::open("/proc/sys/net/ipv4/tcp_rmem").unwrap();
+    let mut s = String::new();
+    file.read_to_string(&mut s).unwrap();
+    println!("/proc/sys/net/ipv4/tcp_rmem: {}", s.trim());
+    let s = s.split_whitespace().nth(1).unwrap();
+    let buffer_size = s.parse().unwrap();
+    println!(
+        "Each connection will get a pre-allocated buffer of {} bytes ({}kb)",
+        buffer_size,
+        buffer_size as f32 / 1024.
+    );
+    unsafe {
+        MEMCACHE_BUFFER_SIZE = buffer_size;
+    }
+}
+#[cfg(not(target_os = "linux"))]
+fn set_memcache_buffer() {}
+
 pub struct MemCache {
     integer_cache: IntegerCache,
     hex_cache: HexCache,
     size_message: &'static str,
-    buffer: [u8; MEMCACHE_BUFFER_SIZE],
+    buffer: Vec<u8>,
 }
 
 unsafe impl Send for MemCache {}
 
 impl super::Parse for MemCache {
     fn new(config: Config) -> Self {
+        set_memcache_buffer();
+
         let size_message = Box::leak(
             format!(
                 "SIZE {} {}\n",
@@ -38,7 +63,7 @@ impl super::Parse for MemCache {
                 config.screen_dimensions.0.max(config.screen_dimensions.1),
             ),
             size_message,
-            buffer: [0u8; MEMCACHE_BUFFER_SIZE],
+            buffer: vec![0; unsafe { MEMCACHE_BUFFER_SIZE }],
         }
     }
     fn write_buffer(&mut self) -> &mut [u8] {
@@ -145,7 +170,7 @@ impl Clone for MemCache {
             integer_cache: self.integer_cache.clone(),
             hex_cache: self.hex_cache.clone(),
             size_message: self.size_message,
-            buffer: [0u8; MEMCACHE_BUFFER_SIZE],
+            buffer: vec![0; unsafe { MEMCACHE_BUFFER_SIZE }],
         }
     }
 }
