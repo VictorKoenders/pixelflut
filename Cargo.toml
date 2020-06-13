@@ -7,9 +7,12 @@ version = "0.1.0"
 [dependencies]
 clap = "2.33"
 num_cpus = "1.10"
-time = "0.2"
-mio = { version = "0.7", default-features = false }
 mio-extras = "2.0"
+
+[dependencies.mio]
+version = "0.7"
+default-features = false
+features = ["tcp", "os-poll"]
 
 [dev-dependencies]
 proptest = "0.10"

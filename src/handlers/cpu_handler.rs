@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::sync::Arc;
 use std::thread::spawn;
-use time;
+use std::time::Instant;
 
 #[cfg(test)]
 use std::collections::VecDeque;
@@ -114,7 +114,7 @@ fn run(
     }
 }
 
-const FRAME_DURATION_NS: u64 = 1_000_000_000 / 30;
+const FRAME_DURATION_S: f32 = 1. / 30.;
 
 pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize, interrupter: &dyn super::Interrupter) {
     let listener = TcpListener::bind((host, port)).expect("Could not bind on port 1234");
@@ -136,9 +136,9 @@ pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize, interrupter: &dyn sup
         handles.push(Handle::new(interrupter.clone()));
     }
 
-    let mut target_next_frame_time = time::precise_time_ns();
+    let mut last_frame_time = Instant::now();
     while interrupter.is_running() {
-        while target_next_frame_time > time::precise_time_ns() {
+        while last_frame_time.elapsed().as_secs_f32() < FRAME_DURATION_S {
             match listener.accept() {
                 Ok((client, _)) => {
                     let mut lowest = (0, handles[0].client_count());
@@ -150,13 +150,11 @@ pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize, interrupter: &dyn sup
                     }
                     handles[lowest.0].add_client(client);
                 }
-                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                    continue;
-                }
+                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
                 Err(e) => panic!("Could not accept new client: {:?}", e),
             }
         }
-        target_next_frame_time = time::precise_time_ns() + FRAME_DURATION_NS;
+        last_frame_time = Instant::now();
         screen.render();
     }
 
@@ -213,7 +211,7 @@ fn split_v3(buffer: &mut Vec<u8>, mut cb: impl FnMut(&[u8])) {
 #[cfg(test)]
 fn split_v4(buffer: &mut VecDeque<u8>, mut cb: impl FnMut(&[u8])) {
     while let Some(i) = buffer.iter().position(|b| b == &b'\n') {
-        let line = buffer.drain(..=i).take(i - 1).collect::<Vec<_>>();
+        let line = buffer.drain(..=i).collect::<Vec<_>>();
         let mut line_slice = &line[..];
         while line_slice.last() == Some(&b'\n') || line_slice.last() == Some(&b'\r') {
             line_slice = &line_slice[..line_slice.len() - 1];
@@ -308,7 +306,7 @@ fn test_buffer_split_v4() {
     let source = Vec::from(&b"1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n1234567890\n123"[..]);
     let mut buffer: VecDeque<u8> = VecDeque::with_capacity(1024);
     for i in source {
-        buffer.push_front(i);
+        buffer.push_back(i);
     }
     split_v4(&mut buffer, |c| {
         assert_eq!(b"1234567890", c);

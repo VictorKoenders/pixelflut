@@ -3,8 +3,8 @@
 /// TcpStreams to this handler.
 pub mod cpu_handler;
 
-/// a handler that deals with incoming requests in an async way.
-pub mod async_handler;
+// /// a handler that deals with incoming requests in an async way.
+// pub mod async_handler;
 
 /// a handler that spawns a new thread for each incoming connection
 pub mod max_threads;

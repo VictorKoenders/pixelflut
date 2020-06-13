@@ -6,8 +6,8 @@ extern crate proptest;
 #[cfg(test)]
 extern crate test;
 
-#[cfg(test)]
-mod integration_test;
+// #[cfg(test)]
+// mod integration_test;
 
 mod client;
 mod handlers;
@@ -84,7 +84,7 @@ fn main() {
             handlers::cpu_handler::main_loop(host, port, cpus, &handlers::RunIndefinitely);
         }
         "max_threads" => handlers::max_threads::main_loop(host, port, &handlers::RunIndefinitely),
-        "async" => {
+        /*"async" => {
             let mut cpus: usize = subcommand_matches
                 .and_then(|m| m.value_of("num_cpus"))
                 .unwrap_or("0")
@@ -94,7 +94,7 @@ fn main() {
                 cpus = num_cpus::get();
             }
             handlers::async_handler::main_loop(host, port, cpus, &handlers::RunIndefinitely);
-        }
+        }*/
         _ => println!(
             "Missing subcommand, run `{} help` for more information",
             std::env::args().next().unwrap()
