@@ -41,6 +41,7 @@ fn test_handle_message_response() {
 }
 
 impl Client {
+    #[allow(dead_code)] // used by fuzzer and tests
     pub fn handle_message_response(&self, buffer: &[u8]) -> Result<Cow<'static, [u8]>, ()> {
         handle_message_v3(buffer).ok_or(())
     }
