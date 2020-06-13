@@ -1,4 +1,4 @@
-use crate::handlers::{async_handler, cpu_handler, max_threads, Interrupter};
+use crate::handlers::{cpu_handler, max_threads, Interrupter}; // async_handler,
 use crate::screen::Screen;
 use rand::{thread_rng, Rng};
 use std::io::{Read, Write};
@@ -19,10 +19,10 @@ pub fn max_threads() {
     do_test(|interrupt, port| max_threads::main_loop([127, 0, 0, 1].into(), port, interrupt));
 }
 
-#[test]
+/*#[test]
 pub fn r#async() {
     do_test(|interrupt, port| async_handler::main_loop([127, 0, 0, 1].into(), port, 2, interrupt));
-}
+}*/
 
 fn do_test<F>(f: F)
 where

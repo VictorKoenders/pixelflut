@@ -1,6 +1,6 @@
 use crate::screen::Screen;
 use mio::net::{TcpListener, TcpStream};
-use mio::{Events, Poll, PollOpt, Ready, Token};
+use mio::{Events, Interest, Poll, Token};
 use mio_extras::channel::{channel, Receiver, Sender};
 use std::collections::VecDeque;
 use std::io::{Error, ErrorKind, Read, Write};
@@ -15,7 +15,7 @@ pub fn main_loop(
     let poll = Poll::new().expect("Could not create poll");
     // let mut clients = HashMap::<Token, Client>::new();
     let mut events = Events::with_capacity(1024);
-    let listener = TcpListener::bind(&(host, port).into()).expect("Could not bind listener");
+    let listener = TcpListener::bind((host, port).into()).expect("Could not bind listener");
     let screen = Screen::init();
 
     let mut threads = Vec::with_capacity(worker_pool_size);
@@ -26,7 +26,12 @@ pub fn main_loop(
 
     std::thread::spawn(move || screen_render_loop(screen));
 
-    poll.register(&listener, Token(1), Ready::readable(), PollOpt::edge())
+    poll.registry()
+        .register(
+            &mut listener,
+            Token(1),
+            Interest::READABLE | Interest::WRITABLE,
+        )
         .expect("Could not register listener");
 
     let mut next_worker_index = 0;
@@ -68,7 +73,8 @@ impl Worker {
         let mut clients = Vec::<Option<Client>>::with_capacity(100_000);
         let mut available_client_indices = VecDeque::<usize>::with_capacity(100_000);
 
-        poll.register(&receiver, Token(0), Ready::readable(), PollOpt::edge())
+        poll.registry()
+            .register(&mut receiver, Token(0), Interest::READABLE)
             .expect("Could not register thread receiver");
 
         while interrupter.is_running() {
