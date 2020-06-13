@@ -8,7 +8,7 @@ version = "0.1.0"
 clap = "2.33"
 num_cpus = "1.10"
 time = "0.1"
-mio = { version = "0.6", default-features = false }
+mio = { version = "0.7", default-features = false }
 mio-extras = "2.0"
 
 [dev-dependencies]
