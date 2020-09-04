@@ -131,10 +131,8 @@ pub fn main_loop(host: IpAddr, port: u16, num_cpus: usize, interrupter: &dyn sup
     // We're claiming 1 CPU for the video rendering and accepting new clients
     // The other CPUs will be used to handle clients
     let handler_count = num_cpus - 1;
-    let mut handles = Vec::with_capacity(handler_count);
-    for _ in 0..handler_count {
-        handles.push(Handle::new(interrupter.clone()));
-    }
+    let mut handles = Vec::new();
+    handles.resize_with(handler_count, || Handle::new(interrupter.clone()));
 
     let mut last_frame_time = Instant::now();
     while interrupter.is_running() {
