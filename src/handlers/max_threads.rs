@@ -1,6 +1,6 @@
 use crate::client::Client;
 use crate::screen::Screen;
-use crate::Result;
+use crate::{Error, Result};
 use std::io::Read;
 use std::net::{IpAddr, TcpListener, TcpStream};
 use std::thread::{sleep, spawn};
@@ -132,7 +132,7 @@ fn run_client(mut socket: TcpStream) -> Result<()> {
     loop {
         let len = socket
             .read(&mut reader.buffer[reader.start_index..])
-            .map_err(|_| ())?;
+            .map_err(|_| Error::Failed)?;
         if len == 0 {
             break;
         }

@@ -31,6 +31,7 @@ impl Screen {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     pub fn all(slice: [u8; 3]) -> bool {
         unsafe {
             for i in 0..FRAME.len() / 3 {

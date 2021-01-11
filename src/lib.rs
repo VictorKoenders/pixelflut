@@ -13,4 +13,9 @@ pub mod utils;
 
 pub use crate::utils::*;
 
-pub type Result<T> = std::result::Result<T, ()>;
+#[derive(Debug)]
+pub enum Error {
+    Failed,
+}
+
+pub type Result<T> = std::result::Result<T, Error>;

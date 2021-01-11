@@ -2,6 +2,7 @@ use crate::screen::Screen;
 use crate::utils::parse_hex;
 #[cfg(test)]
 use crate::utils::parse_usize;
+use crate::Error;
 use std::borrow::Cow;
 use std::io::Write;
 use std::net::TcpStream;
@@ -42,45 +43,45 @@ fn test_handle_message_response() {
 
 impl Client {
     #[allow(dead_code)] // used by fuzzer and tests
-    pub fn handle_message_response(&self, buffer: &[u8]) -> Result<Cow<'static, [u8]>, ()> {
-        handle_message_v3(buffer).ok_or(())
+    pub fn handle_message_response(&self, buffer: &[u8]) -> Result<Cow<'static, [u8]>, Error> {
+        handle_message_v3(buffer).ok_or(Error::Failed)
     }
 
-    pub fn handle_message(&self, stream: &mut TcpStream, buffer: &[u8]) -> Result<(), ()> {
-        let slice = handle_message_v3(buffer).ok_or(())?;
+    pub fn handle_message(&self, stream: &mut TcpStream, buffer: &[u8]) -> Result<(), Error> {
+        let slice = handle_message_v3(buffer).ok_or(Error::Failed)?;
         if !slice.is_empty() {
-            stream.write_all(&slice).map_err(|_| ())?;
+            stream.write_all(&slice).map_err(|_| Error::Failed)?;
         }
         Ok(())
     }
 }
 
 #[cfg(test)]
-fn handle_message_v1(buffer: &[u8]) -> Result<&'static [u8], ()> {
-    let str = ::std::str::from_utf8(&buffer).map_err(|_| ())?;
+fn handle_message_v1(buffer: &[u8]) -> Result<&'static [u8], Error> {
+    let str = ::std::str::from_utf8(&buffer).map_err(|_| Error::Failed)?;
     let mut iter = str.trim().split(' ');
 
     match iter.next() {
         Some("PX") => {
             // Set pixel
-            macro_rules! unwrap_or_return {
-                ($stmt:expr) => {
-                    match $stmt {
-                        Some(n) => n,
-                        None => return Err(()),
-                    }
-                };
-            }
-            let x: usize = unwrap_or_return!(iter.next()).parse().map_err(|_| ())?;
-            let y: usize = unwrap_or_return!(iter.next()).parse().map_err(|_| ())?;
-            let format: &str = unwrap_or_return!(iter.next());
+            let x: usize = iter
+                .next()
+                .ok_or(Error::Failed)?
+                .parse()
+                .map_err(|_| Error::Failed)?;
+            let y: usize = iter
+                .next()
+                .ok_or(Error::Failed)?
+                .parse()
+                .map_err(|_| Error::Failed)?;
+            let format: &str = iter.next().ok_or(Error::Failed)?;
             if format.len() != 6 {
-                return Err(());
+                return Err(Error::Failed);
             }
 
-            let red = u8::from_str_radix(&format[0..2], 16).map_err(|_| ())?;
-            let green = u8::from_str_radix(&format[2..4], 16).map_err(|_| ())?;
-            let blue = u8::from_str_radix(&format[4..], 16).map_err(|_| ())?;
+            let red = u8::from_str_radix(&format[0..2], 16).map_err(|_| Error::Failed)?;
+            let green = u8::from_str_radix(&format[2..4], 16).map_err(|_| Error::Failed)?;
+            let blue = u8::from_str_radix(&format[4..], 16).map_err(|_| Error::Failed)?;
 
             Screen::set_pixel((x, y), (red, green, blue));
             Ok(&[])
@@ -101,11 +102,11 @@ fn handle_message_v1(buffer: &[u8]) -> Result<&'static [u8], ()> {
 }
 
 #[cfg(test)]
-fn handle_message_v2(buffer: &[u8]) -> Result<&'static [u8], ()> {
+fn handle_message_v2(buffer: &[u8]) -> Result<&'static [u8], crate::Error> {
     match buffer.get(0) {
         Some(b'P') | Some(b'p') => {
             if parse_px(buffer.get(3..)).is_none() {
-                Err(())
+                Err(Error::Failed)
             } else {
                 Ok(&[])
             }
