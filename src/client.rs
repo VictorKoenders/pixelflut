@@ -64,11 +64,19 @@ fn handle_message_v1(buffer: &[u8]) -> Result<&'static [u8], Error> {
     match iter.next() {
         Some("PX") => {
             // Set pixel
-            let x: usize = iter.next().parse().ok_or(Error::Failed)?;
-            let y: usize = iter.next().parse().ok_or(Error::Failed)?;
+            let x: usize = iter
+                .next()
+                .ok_or(Error::Failed)?
+                .parse()
+                .map_err(|_| Error::Failed)?;
+            let y: usize = iter
+                .next()
+                .ok_or(Error::Failed)?
+                .parse()
+                .map_err(|_| Error::Failed)?;
             let format: &str = iter.next().ok_or(Error::Failed)?;
             if format.len() != 6 {
-                return Err(());
+                return Err(Error::Failed);
             }
 
             let red = u8::from_str_radix(&format[0..2], 16).map_err(|_| Error::Failed)?;
@@ -94,11 +102,11 @@ fn handle_message_v1(buffer: &[u8]) -> Result<&'static [u8], Error> {
 }
 
 #[cfg(test)]
-fn handle_message_v2(buffer: &[u8]) -> Result<&'static [u8], Error::Failed> {
+fn handle_message_v2(buffer: &[u8]) -> Result<&'static [u8], crate::Error> {
     match buffer.get(0) {
         Some(b'P') | Some(b'p') => {
             if parse_px(buffer.get(3..)).is_none() {
-                Err(())
+                Err(Error::Failed)
             } else {
                 Ok(&[])
             }

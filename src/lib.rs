@@ -13,6 +13,7 @@ pub mod utils;
 
 pub use crate::utils::*;
 
+#[derive(Debug)]
 pub enum Error {
     Failed,
 }
