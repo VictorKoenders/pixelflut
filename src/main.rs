@@ -14,7 +14,8 @@ mod handlers;
 mod screen;
 mod utils;
 
-pub type Result<T> = std::result::Result<T, ()>;
+pub use pixelflut::Error;
+pub type Result<T> = std::result::Result<T, Error>;
 pub use crate::utils::*;
 
 use clap::{App, Arg, SubCommand};
