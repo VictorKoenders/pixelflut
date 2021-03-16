@@ -15,7 +15,7 @@ default-features = false
 features = ["tcp", "os-poll"]
 
 [dev-dependencies]
-proptest = "0.10"
+proptest = "1.0"
 lazy_static = "1.3"
 rand = "0.8"
 hashbrown = { version = "0.11", features = ["nightly"] }
