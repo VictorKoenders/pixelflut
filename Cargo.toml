@@ -24,4 +24,4 @@ hashbrown = { version = "0.11", features = ["nightly"] }
 lto = true
 
 [target."cfg(target_os=\"linux\")".dependencies]
-framebuffer = "0.2"
+framebuffer = "0.3"
