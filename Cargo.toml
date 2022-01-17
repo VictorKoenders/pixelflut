@@ -11,7 +11,7 @@ windowed = ["minifb"]
 memory-cache = []
 
 [dependencies]
-tokio = { version = "1.0", features = ["net", "macros"], optional = true }
+tokio = { version = "1.0", features = ["net", "macros", "rt-multi-thread"], optional = true }
 async-std = { version = "1.0", features = ["attributes"], optional = true }
 io-uring = { version = "0.5", optional = true }
 minifb = { version = "0.20", optional = true }
