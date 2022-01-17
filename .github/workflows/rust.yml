@@ -31,12 +31,13 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Install nightly toolchain
+      - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
+          components: clippy
       
       - name: Install apt dependencies
         run: sudo apt install libxkbcommon-dev
@@ -46,6 +47,12 @@ jobs:
         with:
           command: test
           args: --features ${{ matrix.modes }},${{ matrix.extra_features }}
+
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --features ${{ matrix.modes }},${{ matrix.extra_features }} -- -D warnings
 
   lints:
     name: Lints
@@ -58,18 +65,12 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           override: true
-          components: rustfmt, clippy
+          components: rustfmt
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
-
-      - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --features lint -- -D warnings
