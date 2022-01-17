@@ -36,6 +36,9 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      
+      - name: Install apt dependencies
+        run: sudo apt install libxkbcommon-dev
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1

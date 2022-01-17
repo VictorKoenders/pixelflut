@@ -15,7 +15,7 @@ On linux, this server will display it's screen on a [framebuffer](https://docs.r
 
 # Modes
 
-The server currently supports 3 modes. They are listed below, ranging from the slowest to the fastest mode.
+The server currently supports 5 modes.
 
 ## threadpool
 In this mode, the server starts up a thread for each logical core on your machine (as determined by [num_cpus::get](https://docs.rs/num_cpus/latest/num_cpus/fn.get.html)). The number of cores can be optionally configured with a `-c N` flag.
@@ -26,13 +26,18 @@ Each incoming connection gets distributed over the different threads. Each threa
 In this mode, a new thread is spawned for each incoming connection. This results in hundreds or thousands of threads, which are all blocked on the stream for incoming traffic. 
 
 ## tokio
-In this mode, the server starts up a [tokio](https://tokio.rs/) pool and handles the clients on that. 
+In this mode, the server starts up a [tokio](https://tokio.rs/) pool and handles the clients on that. The number of cores can be optionally configured with a `-c N` flag.
 
 ## async-std
-In this mode, the server starts up an [async-std](https://async.rs/) pool and handles the clients on that.
+In this mode, the server starts up an [async-std](https://async.rs/) pool and handles the clients on that. The number of cores can be optionally configured with a `-c N` flag.
 
 ## io-uring
 In this mode, the server uses Linux's [io_uring](https://en.wikipedia.org/wiki/Io_uring) to handle clients.
+
+This mode can also be combined with `tokio`
+
+This mode requires the `xkbcommon` library to be installed:
+- `sudo apt install libxkbcommon-dev`
 
 # Features
 
