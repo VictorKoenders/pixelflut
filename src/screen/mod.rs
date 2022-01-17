@@ -4,9 +4,13 @@ cfg_if::cfg_if! {
         pub fn new() -> (impl Screen, Option<impl ScreenUpdater>) {
             windowed::Screen::new()
         }
-
-    } else {
+    } else if #[cfg(target_os = "linux")] {
         mod fb;
+    } else {
+        compile_error!("Run this on linux to enable framebuffers, or enable the \"windowed\" feature");
+        pub fn new() -> ((), ()) {
+            ((), ())
+        }
     }
 }
 

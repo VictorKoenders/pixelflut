@@ -15,16 +15,16 @@ jobs:
     strategy:
         matrix:
           modes:
-            - threadpool
-            - max-threads
+            # - threadpool
+            # - max-threads
             - tokio
-            - async-std
-            - io-uring
+            # - async-std
+            # - io-uring
           
           extra_features:
-            - ""
+            # - ""
             - windowed
-            - memory-cache
+            # - memory-cache
 
     steps:
       - name: Checkout sources
