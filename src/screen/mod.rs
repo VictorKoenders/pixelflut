@@ -6,6 +6,9 @@ cfg_if::cfg_if! {
         }
     } else if #[cfg(target_os = "linux")] {
         mod fb;
+        pub fn new() -> (impl Screen, Option<fb::DummyUpdater>) {
+            (fb::Screen::new(), None)
+        }
     } else {
         compile_error!("Run this on linux to enable framebuffers, or enable the \"windowed\" feature");
         pub fn new() -> ((), ()) {
