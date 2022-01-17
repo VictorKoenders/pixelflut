@@ -22,9 +22,10 @@ jobs:
             # - io-uring
           
           extra_features:
-            # - ""
+            - ""
             - windowed
             # - memory-cache
+            # - windowed,memory-cache
 
     steps:
       - name: Checkout sources
