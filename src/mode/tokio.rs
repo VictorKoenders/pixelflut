@@ -16,6 +16,8 @@ pub fn start(args: crate::Args, screen: impl Screen, updater: Option<impl Screen
                 .await
                 .expect("Could not listen on host");
 
+            println!("Listening on {:?}", listener.local_addr().unwrap());
+
             while screen.running() {
                 let (client, _addr) = listener
                     .accept()
@@ -29,6 +31,7 @@ pub fn start(args: crate::Args, screen: impl Screen, updater: Option<impl Screen
 
     // if we have an updater, run tokio on a background thread
     if let Some(mut updater) = updater {
+        println!("Updater detected, running tokio in background thread");
         std::thread::spawn(run);
         while updater.running() {
             updater.update();
@@ -47,7 +50,8 @@ async fn run_client(mut client: TcpStream, screen: impl Screen) {
         }
         let response = state.parse_buffer(&screen, len);
         if let Some(response) = response {
-            if client.write_all(response.into_bytes()).await.is_err() {
+            let bytes = response.as_bytes();
+            if client.write_all(&bytes).await.is_err() {
                 break;
             }
         }

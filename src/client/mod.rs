@@ -1,6 +1,7 @@
 mod parse;
 
 use crate::screen::Screen;
+use std::convert::TryInto;
 
 pub struct ClientState {
     buffer: [u8; 1000],
@@ -21,42 +22,58 @@ impl ClientState {
 
     pub fn parse_buffer(&mut self, screen: &impl Screen, len: usize) -> Option<ResponseMessage> {
         let mut slice = &self.buffer[..len];
-        loop {
-            if matches!(slice.get(0..4), Some(b"help" | b"HELP")) {
-                return Some(ResponseMessage::Help);
-            }
-            println!("{:?}", std::str::from_utf8(&slice[..(10.min(slice.len()))]));
-            let (x, remaining) = parse::parse_coordinate(slice)?;
-            println!("x = {}", x);
-            println!(
-                "{:?}",
-                std::str::from_utf8(&remaining[..(10.min(remaining.len()))])
-            );
-            let (y, remaining) = parse::parse_coordinate(remaining)?;
-            println!("y = {}", y);
-            println!(
-                "{:?}",
-                std::str::from_utf8(&remaining[..(10.min(remaining.len()))])
-            );
-            let color = parse::parse_color(remaining)?;
-            println!("x: {}, y: {}, color: {:?}", x, y, color);
-            screen.set_pixel(x, y, color);
-            slice = &remaining[6..];
-            while matches!(slice.get(0), Some(&b'\r' | &b'\n')) {
-                slice = &slice[1..];
+        while let Some(prefix) = slice.get(0..3) {
+            let arr: &[u8; 3] = unsafe { prefix.try_into().unwrap_unchecked() };
+
+            if arr == b"px " || arr == b"PX " {
+                let remaining = unsafe { slice.get_unchecked(3..) };
+                let (x, remaining) = parse::parse_coordinate(remaining)?;
+                let (y, remaining) = parse::parse_coordinate(remaining)?;
+                let color = parse::parse_color(remaining)?;
+                screen.set_pixel(x, y, color);
+                slice = &remaining[6..];
+                while matches!(slice.get(0), Some(&b'\r' | &b'\n')) {
+                    slice = &slice[1..];
+                }
+            } else {
+                #[cold]
+                fn non_px_path(
+                    prefix: &[u8; 3],
+                    (width, height): (u32, u32),
+                ) -> Option<ResponseMessage> {
+                    match prefix {
+                        b"hel" | b"HEL" => Some(ResponseMessage::Help),
+                        b"siz" | b"SIZ" => Some(ResponseMessage::Size { width, height }),
+                        _ => None,
+                    }
+                }
+
+                if let Some(msg) = non_px_path(arr, screen.size()) {
+                    return Some(msg);
+                }
+                if let Some(idx) = slice.iter().position(|c| c == &b'\n') {
+                    slice = unsafe { slice.get_unchecked(idx + 1..) };
+                } else {
+                    break;
+                }
             }
         }
+        None
     }
 }
 
 pub enum ResponseMessage {
     Help,
+    Size { width: u32, height: u32 },
 }
 
 impl ResponseMessage {
-    pub fn into_bytes(self) -> &'static [u8] {
+    pub fn as_bytes(&self) -> std::borrow::Cow<'static, [u8]> {
         match self {
-            ResponseMessage::Help => HELP_MESSAGE,
+            ResponseMessage::Help => HELP_MESSAGE.into(),
+            ResponseMessage::Size { width, height } => {
+                format!("SIZE {} {}\r\n", width, height).into_bytes().into()
+            }
         }
     }
 }

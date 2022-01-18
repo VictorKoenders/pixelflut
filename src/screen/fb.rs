@@ -1,10 +1,17 @@
 use framebuffer::Framebuffer;
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 
 #[derive(Clone)]
 pub struct Screen {
     buffer: *mut Framebuffer,
     width: u32,
     height: u32,
+    line_length: u32,
+    bytes_per_pixel: u32,
+    write_count: Arc<AtomicUsize>,
 }
 
 impl Screen {
@@ -12,23 +19,21 @@ impl Screen {
         let buffer = Framebuffer::new("/dev/fb0").expect("Could not open frame buffer");
         let width = buffer.var_screen_info.xres;
         let height = buffer.var_screen_info.yres;
-        assert_eq!(
-            buffer.var_screen_info.bits_per_pixel, 32,
-            "Weird bytes per pixel format (found {}, expected 32), exiting",
-            buffer.var_screen_info.bits_per_pixel
-        );
-        assert_eq!(
-            buffer.fix_screen_info.line_length,
-            width * 4,
-            "Expected a line length of {}, found {}",
-            width * 8,
-            buffer.fix_screen_info.line_length
+        let line_length = buffer.fix_screen_info.line_length;
+        let bytes_per_pixel = buffer.var_screen_info.bits_per_pixel / 8;
+        println!("Screen is {}x{} pixels", width, height);
+        println!(
+            "Line length: {}, bytes per pixel: {}",
+            line_length, bytes_per_pixel
         );
 
         Self {
             buffer: Box::into_raw(Box::new(buffer)),
             width,
             height,
+            line_length,
+            bytes_per_pixel,
+            write_count: Arc::new(AtomicUsize::new(0)),
         }
     }
 }
@@ -36,24 +41,41 @@ impl Screen {
 unsafe impl Send for Screen {}
 
 impl super::Screen for Screen {
-    fn set_pixel(&self, x: u16, y: u16, color: (u8, u8, u8)) {
-        if x as u32 >= self.width || y as u32 >= self.height {
+    fn set_pixel(&self, x: u16, y: u16, (r, g, b): (u8, u8, u8)) {
+        let x = x as u32;
+        let y = y as u32;
+        if x >= self.width || y >= self.height {
             return;
         }
-        let x = x as usize;
-        let y = y as usize;
-        let width = self.width as usize * 4;
-        let idx = (x + y * width) * 4;
+        let idx = (x * self.bytes_per_pixel + y * self.line_length) as usize;
         let map = &mut unsafe { &mut *self.buffer }.frame;
-        if let Some(slice) = map.get_mut(idx..idx + 4) {
-            slice[0] = color.0;
-            slice[1] = color.1;
-            slice[2] = color.2;
+        if cfg!(debug_assertions) {
+            assert!(
+                map.get_mut(idx..idx + 4).is_some(),
+                "Invalid idx for {}/{} (width: {}, height: {})",
+                x,
+                y,
+                self.width,
+                self.height
+            );
+        }
+        let slice = unsafe { map.get_unchecked_mut(idx..idx + 4) };
+        slice[0] = b;
+        slice[1] = g;
+        slice[2] = r;
+
+        let count = self.write_count.fetch_add(1, Ordering::Relaxed);
+        if count % 1_000_000 == 0 {
+            println!("Wrote {} pixels", count);
         }
     }
 
     fn running(&self) -> bool {
         true
+    }
+
+    fn size(&self) -> (u32, u32) {
+        (self.width, self.height)
     }
 }
 

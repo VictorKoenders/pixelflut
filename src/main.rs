@@ -1,5 +1,5 @@
 mod client;
-mod features;
+mod mode;
 mod screen;
 
 use cfg_if::cfg_if;
@@ -10,9 +10,9 @@ fn main() {
     let (screen, screen_updater) = crate::screen::new();
     cfg_if! {
         if #[cfg(feature = "tokio")] {
-            features::tokio::start(args, screen, screen_updater);
+            mode::tokio::start(args, screen, screen_updater);
         } else {
-            compile_error!("No valid mode selected. Please run this with one of the modes selected");
+            compile_error!("No valid mode selected, run with `cargo build --features <mode>`");
         }
     }
 }
