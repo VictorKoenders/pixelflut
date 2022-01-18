@@ -46,6 +46,43 @@ Additional features can be enabled. These features can be added to the mode abov
 - `windowed`: Will run pixelflut in a windowed mode instead of on a linux framebuffer. On windows this flag is required.
 - `memory-cache`: Will use a memory cache to lookup values very quickly. This uses a large amount of memory (at least 4GB is recommended)
 
+# Recording metrics
+
+## Network traffic
+
+For recording network traffic you can use `tcpdump`.
+
+```bash
+sudo tcpdump port 1234 -w tcpdump.capture
+```
+
+Then you can read this with
+```bash
+sudo tcpdump -r tcpdump.capture
+```
+
+## Performance
+
+Performance can be recorded and viewed with [flamegraph](https://github.com/flamegraph-rs/flamegraph)
+
+```bash
+# For ubuntu
+sudo apt install linux-tools-common linux-tools-generic linux-tools-`uname -r`
+cargo install flamegraph
+
+# permissions
+sudo usermod -aG video $USER # enables framebuffer for non-sudo accounts
+echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid # enables perf for non-sudo accounts
+```
+
+Then run
+
+```bash
+flamegraph ./target/release/pixelflut <args>
+```
+
+The flamegraph will be expored as `flamegraph.svg`
+
 # Issues and server configuration
 Several issues can occur when running the server. These issues are outlined below. When you encounter an issue while running this server, please let us know.
 
@@ -54,3 +91,4 @@ the `max-threads` mode can quickly run your operating system out of usable handl
 When running the screen on a linux framebuffer, the cursor is not hidden by default. You can run the following command to hide the cursor:
 - On the current screen: `echo -n -e '\e[?17;14;224c'`
 - On a different TTY screen: `echo -n -e '\e[?17;14;224c' > dev/ttyX`
+
