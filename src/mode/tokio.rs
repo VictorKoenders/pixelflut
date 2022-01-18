@@ -1,7 +1,11 @@
-use crate::client::ClientState;
-use crate::screen::{Screen, ScreenUpdater};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
+use crate::{
+    client::ClientState,
+    screen::{Screen, ScreenUpdater},
+};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{TcpListener, TcpStream},
+};
 
 pub fn start(args: crate::Args, screen: impl Screen, updater: Option<impl ScreenUpdater>) {
     let mut builder = tokio::runtime::Builder::new_multi_thread();
