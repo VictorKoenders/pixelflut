@@ -10,7 +10,7 @@ use tokio::{
 pub fn start(args: crate::Args, screen: impl Screen, updater: Option<impl ScreenUpdater>) {
     let mut builder = tokio::runtime::Builder::new_multi_thread();
     if let Some(cores) = args.core_count {
-        builder.max_blocking_threads(cores);
+        builder.worker_threads(cores);
     }
     let rt = builder.enable_all().build().unwrap();
 
