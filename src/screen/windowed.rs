@@ -72,6 +72,10 @@ impl super::Screen for Screen {
             *old = (pixel.0 as u32) << 16 | (pixel.1 as u32) << 8 | (pixel.2 as u32);
         }
     }
+
+    fn size(&self) -> (u32, u32) {
+        (WIDTH as u32, HEIGHT as u32)
+    }
 }
 
 pub struct ScreenUpdater {
@@ -82,9 +86,9 @@ pub struct ScreenUpdater {
 
 impl super::ScreenUpdater for ScreenUpdater {
     fn update(&mut self) {
-        let buffer: [u32; WIDTH * HEIGHT] = *unsafe { &*self.buffer.as_ref() };
+        let buffer: &[u32; WIDTH * HEIGHT] = unsafe { self.buffer.as_ref() };
         self.window
-            .update_with_buffer(&buffer, WIDTH, HEIGHT)
+            .update_with_buffer(buffer, WIDTH, HEIGHT)
             .expect("Could not update screen");
 
         if !self.window.is_open() || self.window.is_key_down(Key::Escape) {
