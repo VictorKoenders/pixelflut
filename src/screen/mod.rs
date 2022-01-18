@@ -1,3 +1,5 @@
+use std::convert::Infallible;
+
 cfg_if::cfg_if! {
     if #[cfg(feature = "windowed")] {
         mod windowed;
@@ -6,8 +8,8 @@ cfg_if::cfg_if! {
         }
     } else if #[cfg(target_os = "linux")] {
         mod fb;
-        pub fn new() -> (impl Screen, Option<DummyUpdater>) {
-            (fb::Screen::new(), None)
+        pub fn new() -> (impl Screen, Option<impl ScreenUpdater>) {
+            (fb::Screen::new(), Option::<DummyUpdater>::None)
         }
     } else {
         compile_error!("Run this on linux to enable framebuffers, or enable the \"windowed\" feature");
@@ -28,7 +30,7 @@ pub trait ScreenUpdater {
     fn running(&self) -> bool;
 }
 
-struct DummyUpdater;
+struct DummyUpdater(Infallible);
 
 impl ScreenUpdater for DummyUpdater {
     fn update(&mut self) {}
