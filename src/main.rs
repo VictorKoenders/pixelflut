@@ -2,19 +2,12 @@ mod client;
 mod mode;
 mod screen;
 
-use cfg_if::cfg_if;
 use clap::Parser;
 
 fn main() {
     let args = crate::Args::parse();
     let (screen, screen_updater) = crate::screen::new();
-    cfg_if! {
-        if #[cfg(feature = "tokio")] {
-            mode::tokio::start(args, screen, screen_updater);
-        } else {
-            compile_error!("No valid mode selected, run with `cargo build --features <mode>`");
-        }
-    }
+    mode::start(args, screen, screen_updater);
 }
 
 #[derive(Parser, Debug)]

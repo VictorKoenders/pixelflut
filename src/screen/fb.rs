@@ -78,12 +78,3 @@ impl super::Screen for Screen {
         (self.width, self.height)
     }
 }
-
-pub struct DummyUpdater;
-
-impl super::ScreenUpdater for DummyUpdater {
-    fn update(&mut self) {}
-    fn running(&self) -> bool {
-        true
-    }
-}

@@ -18,7 +18,7 @@ jobs:
             # - threadpool
             # - max-threads
             - tokio
-            # - async-std
+            - async-std
             # - io-uring
           
           extra_features:

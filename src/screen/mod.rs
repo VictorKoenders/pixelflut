@@ -6,7 +6,7 @@ cfg_if::cfg_if! {
         }
     } else if #[cfg(target_os = "linux")] {
         mod fb;
-        pub fn new() -> (impl Screen, Option<fb::DummyUpdater>) {
+        pub fn new() -> (impl Screen, Option<DummyUpdater>) {
             (fb::Screen::new(), None)
         }
     } else {
@@ -26,4 +26,13 @@ pub trait Screen: Clone + Send + 'static {
 pub trait ScreenUpdater {
     fn update(&mut self);
     fn running(&self) -> bool;
+}
+
+struct DummyUpdater;
+
+impl ScreenUpdater for DummyUpdater {
+    fn update(&mut self) {}
+    fn running(&self) -> bool {
+        true
+    }
 }
