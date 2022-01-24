@@ -10,6 +10,7 @@ cfg_if::cfg_if! {
     if #[cfg(feature = "memory-cache")] {
         pub use self::memcache::*;
     } else {
+        // Note: Currently bytewise is faster than memory-cache
         pub use self::bytewise::*;
     }
 }
