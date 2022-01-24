@@ -1,6 +1,7 @@
-mod parse;
-
-use crate::screen::Screen;
+use crate::{
+    parse::{parse_color, parse_coordinate},
+    screen::Screen,
+};
 use std::convert::TryInto;
 
 pub struct ClientState {
@@ -27,9 +28,9 @@ impl ClientState {
 
             if arr == b"px " || arr == b"PX " {
                 let remaining = unsafe { slice.get_unchecked(3..) };
-                let (x, remaining) = parse::parse_coordinate(remaining)?;
-                let (y, remaining) = parse::parse_coordinate(remaining)?;
-                let color = parse::parse_color(remaining)?;
+                let (x, remaining) = parse_coordinate(remaining)?;
+                let (y, remaining) = parse_coordinate(remaining)?;
+                let color = parse_color(remaining)?;
                 screen.set_pixel(x, y, color);
                 slice = &remaining[6..];
                 while matches!(slice.get(0), Some(&b'\r' | &b'\n')) {
