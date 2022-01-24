@@ -43,8 +43,7 @@ mod num {
             self.allocate();
 
             for i in 0..=MAX_VALID_NUMBER {
-                let str = i.to_string();
-                let index = get_index_from_str(str.as_bytes());
+                let index = get_index_from_str(format!("{} ", i).as_bytes()).unwrap().0;
                 self.add(index, i as u16);
             }
             self.finalize();
@@ -57,13 +56,13 @@ mod num {
         }
 
         fn allocate(&mut self) {
-            let mut max_valid_number_str = MAX_VALID_NUMBER.to_string();
-            for i in 1..max_valid_number_str.len() {
-                max_valid_number_str.replace_range(i..=i, "9");
+            let mut max_idx = 0;
+            for i in 0..=MAX_VALID_NUMBER {
+                let (idx, _) = get_index_from_str(format!("{} ", i).as_bytes()).unwrap();
+                max_idx = max_idx.max(idx);
             }
 
-            let expected_len = get_index_from_str(max_valid_number_str.as_bytes());
-            self.entries.reserve(expected_len);
+            self.entries.reserve(max_idx);
         }
         fn add(&mut self, index: usize, num: u16) {
             if self.entries.capacity() < index {
@@ -88,64 +87,70 @@ mod num {
         }
 
         pub fn parse_coordinate<'a>(&self, buff: &'a [u8]) -> Option<(u16, &'a [u8])> {
-            for i in [4, 3, 2, 1] {
-                if buff.get(i) != Some(&b' ') {
-                    continue;
-                }
-                // Safe because we know that buff[i] is a space
-                let range = unsafe { buff.get_unchecked(..i) };
-                let remaining = unsafe { buff.get_unchecked(i + 1..) };
-
-                let index = get_index_from_str(range);
-                if let Some(result) = self.get(index) {
-                    return Some((result, remaining));
-                }
+            let (index, len) = get_index_from_str_v1(buff)?;
+            if let Some(result) = self.get(index) {
+                return Some((result, unsafe { buff.get_unchecked(len..) }));
             }
+
             None
         }
     }
 
     /// Turn a string into an integer. Only works with strings that are up to 4 bytes long.
-    fn get_index_from_str(s: &[u8]) -> usize {
-        // s.len().min(4) is slower than not checking it
-        let len = s.len();
+    /// Will always point at the fastest implementation.
+    #[inline]
+    pub fn get_index_from_str(s: &[u8]) -> Option<(usize, usize)> {
+        get_index_from_str_v2(s)
+    }
 
-        // check that the string isn't too long, but only in debug mode
-        if cfg!(debug_assertions) && len > 4 {
-            panic!(
-                "Could not get index from str with a len larger than 8 (requested {})",
-                len
-            );
+    /// Turn a string into an integer. Only works with strings that are up to 4 bytes long.
+    #[inline]
+    pub fn get_index_from_str_v1(s: &[u8]) -> Option<(usize, usize)> {
+        for i in [5, 4, 3, 2, 1] {
+            if let Some(b' ') = s.get(i) {
+                let len = i;
+                let slice = unsafe { s.get_unchecked(..i) };
+
+                let mut target = [0u8; 4];
+                target[..len].copy_from_slice(slice);
+
+                let idx = u32::from_le_bytes(target);
+                return Some((idx as usize, len));
+            }
         }
+        None
+    }
 
-        let mut val: u32 = 0;
-        // Copy over the first `len` bytes to `val`
-        unsafe {
-            std::ptr::copy_nonoverlapping(s.as_ptr(), &mut val as *mut u32 as *mut u8, len);
-        }
+    /// Turn a string into an integer. Only works with strings that are up to 4 bytes long.
+    #[inline]
+    pub fn get_index_from_str_v2(s: &[u8]) -> Option<(usize, usize)> {
+        let len = s.iter().take(5).position(|b| *b == b' ')?;
 
-        val as usize
+        let mut target = [0u8; 4];
+        target[..len].copy_from_slice(&s[0..len]);
+
+        let idx = u32::from_le_bytes(target);
+        Some((idx as usize, len))
     }
 
     #[test]
     fn test_get_index_from_str() {
         // "abc" is 0x616263
-        assert_eq!(get_index_from_str(b"abc"), 0x0063_6261);
-        assert_eq!(get_index_from_str(&b"abcdef"[0..3]), 0x0063_6261);
-        assert_eq!(get_index_from_str(b"640"), 0x0030_3436);
+        assert_eq!(get_index_from_str_v1(b"abc "), Some((0x0063_6261, 3)));
+        assert_eq!(get_index_from_str_v1(b"640 "), Some((0x0030_3436, 3)));
+        assert_eq!(get_index_from_str_v1(b"a "), Some((0x61, 1)));
+        assert_eq!(get_index_from_str_v1(b"0 "), Some((0x30, 1)));
+        assert_eq!(get_index_from_str_v1(b"20 "), Some((0x3032, 2)));
+        assert_eq!(get_index_from_str_v1(b"920 "), Some((0x30_3239, 3)));
+        assert_eq!(get_index_from_str_v1(b"1920 "), Some((0x3032_3931, 4)));
 
-        assert_eq!(get_index_from_str(b"a"), 0x61);
-        assert_eq!(get_index_from_str(b"0"), 0x30);
-        assert_eq!(get_index_from_str(b"20"), 0x3032);
-        assert_eq!(get_index_from_str(b"920"), 0x30_3239);
-        assert_eq!(get_index_from_str(b"1920"), 0x3032_3931);
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_get_index_from_str_overflow() {
-        // If we pass a str with length > 4, it should panic
-        get_index_from_str(b"12345");
+        assert_eq!(get_index_from_str_v2(b"abc "), Some((0x0063_6261, 3)));
+        assert_eq!(get_index_from_str_v2(b"640 "), Some((0x0030_3436, 3)));
+        assert_eq!(get_index_from_str_v2(b"a "), Some((0x61, 1)));
+        assert_eq!(get_index_from_str_v2(b"0 "), Some((0x30, 1)));
+        assert_eq!(get_index_from_str_v2(b"20 "), Some((0x3032, 2)));
+        assert_eq!(get_index_from_str_v2(b"920 "), Some((0x30_3239, 3)));
+        assert_eq!(get_index_from_str_v2(b"1920 "), Some((0x3032_3931, 4)));
     }
 
     #[test]
