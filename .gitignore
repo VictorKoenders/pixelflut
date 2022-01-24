@@ -2,3 +2,7 @@ target
 **/*.rs.bk
 Cargo.lock
 out
+flamegraph.svg
+perf.data
+perf.data.old
+

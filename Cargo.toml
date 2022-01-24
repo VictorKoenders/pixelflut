@@ -47,6 +47,7 @@ rand = "0.8"
 
 [profile.release]
 lto = true
+debug = true
 
 [target."cfg(target_os=\"linux\")".dependencies]
 framebuffer = "0.3"

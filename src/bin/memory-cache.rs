@@ -16,9 +16,9 @@ fn main() {
     cache.init();
 
     let start = ::std::time::Instant::now();
-    println!("Running for 10 seconds");
+    println!("Running for 60 seconds");
 
-    while start.elapsed().as_secs() < 10 {
+    while start.elapsed().as_secs() < 60 {
         let mut buffer = input.as_bytes();
 
         let mut idx = 0;
