@@ -1,5 +1,4 @@
 use framebuffer::Framebuffer;
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Screen {
