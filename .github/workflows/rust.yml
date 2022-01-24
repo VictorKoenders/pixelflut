@@ -16,7 +16,7 @@ jobs:
         matrix:
           modes:
             # - threadpool
-            # - max-threads
+            - max-threads
             - tokio
             - async-std
             # - io-uring
@@ -24,8 +24,8 @@ jobs:
           extra_features:
             - ""
             - windowed
-            # - memory-cache
-            # - windowed,memory-cache
+            - memory-cache
+            - windowed,memory-cache
 
     steps:
       - name: Checkout sources
