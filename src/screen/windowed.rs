@@ -1,13 +1,5 @@
 use minifb::{Key, Window, WindowOptions};
-use std::{
-    alloc::Layout,
-    net::TcpStream,
-    ptr::NonNull,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use std::{alloc::Layout, net::TcpStream, ptr::NonNull};
 
 const WIDTH: usize = 800;
 const HEIGHT: usize = 600;
@@ -15,7 +7,6 @@ const HEIGHT: usize = 600;
 #[derive(Clone)]
 pub struct Screen {
     buffer: NonNull<[u32; WIDTH * HEIGHT]>,
-    running: Arc<AtomicBool>,
 }
 
 // Safe because we're only setting integer on our `buffer: *mut` pointer, and not re-allocating it or something
@@ -28,10 +19,7 @@ impl Screen {
             NonNull::new(unsafe { std::alloc::alloc(layout).cast() })
                 .expect("Could not allocate screen buffer")
         };
-        let screen = Self {
-            buffer,
-            running: Arc::new(AtomicBool::new(true)),
-        };
+        let screen = Self { buffer };
 
         let mut updater = ScreenUpdater {
             buffer,
@@ -45,7 +33,7 @@ impl Screen {
                 },
             )
             .unwrap(),
-            running: Arc::clone(&screen.running),
+            running: true,
         };
 
         // Limit to max ~60 fps update rate
@@ -60,7 +48,7 @@ impl Screen {
 
 impl super::Screen for Screen {
     fn running(&self) -> bool {
-        self.running.load(Ordering::Relaxed)
+        true
     }
 
     fn set_pixel(&self, x: u16, y: u16, pixel: (u8, u8, u8)) {
@@ -81,7 +69,7 @@ impl super::Screen for Screen {
 pub struct ScreenUpdater {
     buffer: NonNull<[u32; WIDTH * HEIGHT]>,
     window: Window,
-    running: Arc<AtomicBool>,
+    running: bool,
 }
 
 impl super::ScreenUpdater for ScreenUpdater {
@@ -92,13 +80,13 @@ impl super::ScreenUpdater for ScreenUpdater {
             .expect("Could not update screen");
 
         if !self.window.is_open() || self.window.is_key_down(Key::Escape) {
-            self.running.store(false, Ordering::Relaxed);
+            self.running = false;
             // connect to the server so that we can shut that down correctly
             let _ = TcpStream::connect("localhost:1234");
         }
     }
 
     fn running(&self) -> bool {
-        self.running.load(Ordering::Relaxed)
+        self.running
     }
 }

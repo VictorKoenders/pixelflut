@@ -1,8 +1,5 @@
 use framebuffer::Framebuffer;
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc,
-};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Screen {
@@ -11,7 +8,6 @@ pub struct Screen {
     height: u32,
     line_length: u32,
     bytes_per_pixel: u32,
-    write_count: Arc<AtomicUsize>,
 }
 
 impl Screen {
@@ -33,7 +29,6 @@ impl Screen {
             height,
             line_length,
             bytes_per_pixel,
-            write_count: Arc::new(AtomicUsize::new(0)),
         }
     }
 }
@@ -63,11 +58,6 @@ impl super::Screen for Screen {
         slice[0] = b;
         slice[1] = g;
         slice[2] = r;
-
-        let count = self.write_count.fetch_add(1, Ordering::Relaxed);
-        if count % 1_000_000 == 0 {
-            println!("Wrote {} pixels", count);
-        }
     }
 
     fn running(&self) -> bool {
