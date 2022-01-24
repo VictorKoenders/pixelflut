@@ -1,12 +1,16 @@
 use framebuffer::Framebuffer;
 
-#[derive(Clone)]
-pub struct Screen {
-    buffer: *mut Framebuffer,
+struct ScreenInner {
+    buffer: Framebuffer,
     width: u32,
     height: u32,
     line_length: u32,
     bytes_per_pixel: u32,
+}
+
+#[derive(Clone)]
+pub struct Screen {
+    inner: *mut ScreenInner,
 }
 
 impl Screen {
@@ -23,11 +27,13 @@ impl Screen {
         );
 
         Self {
-            buffer: Box::into_raw(Box::new(buffer)),
-            width,
-            height,
-            line_length,
-            bytes_per_pixel,
+            inner: Box::into_raw(Box::new(ScreenInner {
+                buffer,
+                width,
+                height,
+                line_length,
+                bytes_per_pixel,
+            }))
         }
     }
 }
@@ -36,21 +42,22 @@ unsafe impl Send for Screen {}
 
 impl super::Screen for Screen {
     fn set_pixel(&self, x: u16, y: u16, (r, g, b): (u8, u8, u8)) {
+        let inner = unsafe { &mut *self.inner };
         let x = x as u32;
         let y = y as u32;
-        if x >= self.width || y >= self.height {
+        if x >= inner.width || y >= inner.height {
             return;
         }
-        let idx = (x * self.bytes_per_pixel + y * self.line_length) as usize;
-        let map = &mut unsafe { &mut *self.buffer }.frame;
+        let idx = (x * inner.bytes_per_pixel + y * inner.line_length) as usize;
+        let map = &mut inner.buffer.frame;
         if cfg!(debug_assertions) {
             assert!(
                 map.get_mut(idx..idx + 4).is_some(),
                 "Invalid idx for {}/{} (width: {}, height: {})",
                 x,
                 y,
-                self.width,
-                self.height
+                inner.width,
+                inner.height
             );
         }
         let slice = unsafe { map.get_unchecked_mut(idx..idx + 4) };
@@ -64,6 +71,7 @@ impl super::Screen for Screen {
     }
 
     fn size(&self) -> (u32, u32) {
-        (self.width, self.height)
+        let inner = unsafe { &*self.inner };
+        (inner.width, inner.height)
     }
 }
