@@ -106,7 +106,7 @@ mod num {
     /// Turn a string into an integer. Only works with strings that are up to 4 bytes long.
     #[inline]
     pub fn get_index_from_str_v1(s: &[u8]) -> Option<(usize, usize)> {
-        for i in [5, 4, 3, 2, 1] {
+        for i in 1..=5 {
             if let Some(b' ') = s.get(i) {
                 let len = i;
                 let slice = unsafe { s.get_unchecked(..i) };
@@ -115,7 +115,7 @@ mod num {
                 target[..len].copy_from_slice(slice);
 
                 let idx = u32::from_le_bytes(target);
-                return Some((idx as usize, len));
+                return Some((idx as usize, len + 1));
             }
         }
         None
@@ -130,27 +130,27 @@ mod num {
         target[..len].copy_from_slice(&s[0..len]);
 
         let idx = u32::from_le_bytes(target);
-        Some((idx as usize, len))
+        Some((idx as usize, len + 1))
     }
 
     #[test]
     fn test_get_index_from_str() {
         // "abc" is 0x616263
-        assert_eq!(get_index_from_str_v1(b"abc "), Some((0x0063_6261, 3)));
-        assert_eq!(get_index_from_str_v1(b"640 "), Some((0x0030_3436, 3)));
-        assert_eq!(get_index_from_str_v1(b"a "), Some((0x61, 1)));
-        assert_eq!(get_index_from_str_v1(b"0 "), Some((0x30, 1)));
-        assert_eq!(get_index_from_str_v1(b"20 "), Some((0x3032, 2)));
-        assert_eq!(get_index_from_str_v1(b"920 "), Some((0x30_3239, 3)));
-        assert_eq!(get_index_from_str_v1(b"1920 "), Some((0x3032_3931, 4)));
+        assert_eq!(get_index_from_str_v1(b"abc "), Some((0x0063_6261, 4)));
+        assert_eq!(get_index_from_str_v1(b"640 "), Some((0x0030_3436, 4)));
+        assert_eq!(get_index_from_str_v1(b"a "), Some((0x61, 2)));
+        assert_eq!(get_index_from_str_v1(b"0 "), Some((0x30, 2)));
+        assert_eq!(get_index_from_str_v1(b"20 "), Some((0x3032, 3)));
+        assert_eq!(get_index_from_str_v1(b"920 "), Some((0x30_3239, 4)));
+        assert_eq!(get_index_from_str_v1(b"1920 "), Some((0x3032_3931, 5)));
 
-        assert_eq!(get_index_from_str_v2(b"abc "), Some((0x0063_6261, 3)));
-        assert_eq!(get_index_from_str_v2(b"640 "), Some((0x0030_3436, 3)));
-        assert_eq!(get_index_from_str_v2(b"a "), Some((0x61, 1)));
-        assert_eq!(get_index_from_str_v2(b"0 "), Some((0x30, 1)));
-        assert_eq!(get_index_from_str_v2(b"20 "), Some((0x3032, 2)));
-        assert_eq!(get_index_from_str_v2(b"920 "), Some((0x30_3239, 3)));
-        assert_eq!(get_index_from_str_v2(b"1920 "), Some((0x3032_3931, 4)));
+        assert_eq!(get_index_from_str_v2(b"abc "), Some((0x0063_6261, 4)));
+        assert_eq!(get_index_from_str_v2(b"640 "), Some((0x0030_3436, 4)));
+        assert_eq!(get_index_from_str_v2(b"a "), Some((0x61, 2)));
+        assert_eq!(get_index_from_str_v2(b"0 "), Some((0x30, 2)));
+        assert_eq!(get_index_from_str_v2(b"20 "), Some((0x3032, 3)));
+        assert_eq!(get_index_from_str_v2(b"920 "), Some((0x30_3239, 4)));
+        assert_eq!(get_index_from_str_v2(b"1920 "), Some((0x3032_3931, 5)));
     }
 
     #[test]
@@ -161,5 +161,6 @@ mod num {
             memcache.parse_coordinate(b"1920 "),
             Some((1920u16, Default::default()))
         );
+        assert_eq!(get_index_from_str_v1(b"503 2 "), Some((0x333035, 4)));
     }
 }
