@@ -5,6 +5,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(feature = "async-std")] {
         mod async_std;
         pub use self::async_std::start;
+    } else if #[cfg(feature = "max-threads")] {
+        mod max_threads;
+        pub use self::max_threads::start;
     } else {
         compile_error!("No valid mode selected, run with `cargo build --features <mode>`");
     }
