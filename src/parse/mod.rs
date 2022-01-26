@@ -45,10 +45,12 @@ fn crashes() {
     // crashes found with running the following commint in the ./fuzz/ folder:
     // `cargo afl fuzz -i in -o out target/debug/pixelflut_fuzzer`
     let cases = [
+        b"mmmmm ".as_slice(),
+        b"10 \0".as_slice(),
         b" \\".as_slice(),
         b" > \n".as_slice(),
         b" ".as_slice(),
-        b"mmmmm ".as_slice(),
+        b"00000000000000000000000000000000000000010\n".as_slice(),
     ];
 
     #[cfg(feature = "memory-cache")]
@@ -66,7 +68,7 @@ fn crashes() {
             (Some(x), None) if x.0 > MAX_VALID_NUMBER => {}
             (Some(x), Some(y)) if x == y => {}
             (None, None) => {}
-            _ => panic!("bytewise and memcache did not agree on {:?}", data),
+            _ => panic!("bytewise and memcache did not agree on {:?}", case),
         }
     }
 }
