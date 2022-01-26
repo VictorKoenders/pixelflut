@@ -33,7 +33,7 @@ impl Screen {
                 height,
                 line_length,
                 bytes_per_pixel,
-            }))
+            })),
         }
     }
 }
