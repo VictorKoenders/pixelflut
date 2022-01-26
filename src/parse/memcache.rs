@@ -106,7 +106,7 @@ mod num {
     /// Turn a string into an integer. Only works with strings that are up to 4 bytes long.
     #[inline]
     pub fn get_index_from_str_v1(s: &[u8]) -> Option<(usize, usize)> {
-        for i in 1..=5 {
+        for i in 1..s.len().min(5) {
             if let Some(b' ') = s.get(i) {
                 let len = i;
                 let slice = unsafe { s.get_unchecked(..i) };

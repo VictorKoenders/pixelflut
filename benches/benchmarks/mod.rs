@@ -1,18 +1,18 @@
 use criterion::Criterion;
-use pixelflut::parse::*;
 
 pub mod parsing_coordinates;
 
-pub fn misc(c: &mut Criterion) {
+pub fn misc(_c: &mut Criterion) {
     #[cfg(feature = "memory-cache")]
     {
+        use pixelflut::parse::*;
         let inputs: Vec<String> = (0..=MAX_VALID_NUMBER)
             .map(|n| n.to_string())
             .cycle()
             .take(1_000_000)
             .collect();
 
-        let mut group = c.benchmark_group("get_index_from_str");
+        let mut group = _c.benchmark_group("get_index_from_str");
 
         group.bench_with_input("v1", &inputs, |b, i| {
             b.iter(|| {

@@ -7,7 +7,7 @@ pub fn parse_coordinate(buffer: &[u8]) -> Option<(u16, &[u8])> {
     for (idx, b) in buffer.iter().copied().enumerate() {
         if b >= b'0' && b <= b'9' {
             result = result * 10 + (b - b'0') as u16;
-        } else if b == b' ' {
+        } else if b == b' ' && idx != 0 {
             return Some((
                 result,
                 // Safety: We know that `idx` is a space so `idx+1..` will always exist
