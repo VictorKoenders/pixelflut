@@ -1,19 +1,10 @@
 pub mod bytewise;
-#[cfg(feature = "memory-cache")]
-pub mod memcache;
 pub mod python_generated;
 pub mod std;
 
 pub const MAX_VALID_NUMBER: u16 = 1920;
 
-cfg_if::cfg_if! {
-    if #[cfg(feature = "memory-cache")] {
-        pub use self::memcache::*;
-    } else {
-        // Note: Currently bytewise is faster than memory-cache
-        pub use self::bytewise::*;
-    }
-}
+pub use self::bytewise::*;
 
 #[test]
 fn validate() {
@@ -45,30 +36,18 @@ fn crashes() {
     // crashes found with running the following commint in the ./fuzz/ folder:
     // `cargo afl fuzz -i in -o out target/debug/pixelflut_fuzzer`
     let cases = [
-        b"mmmmm ".as_slice(),
-        b"10 \0".as_slice(),
-        b" \\".as_slice(),
-        b" > \n".as_slice(),
-        b" ".as_slice(),
-        b"00000000000000000000000000000000000000010\n".as_slice(),
+        "mmmmm ".as_bytes(),
+        "10 \0".as_bytes(),
+        " \\".as_bytes(),
+        " > \n".as_bytes(),
+        " ".as_bytes(),
+        "00000000000000000000000000000000000000010\n".as_bytes(),
+        "90\n\0".as_bytes(),
+        &[0x30, 0x30, 0x30, 0x30, 0xdf, 0x20],
     ];
 
-    #[cfg(feature = "memory-cache")]
-    let memcache = {
-        let mut cache = memcache::NumCache::new();
-        cache.init();
-        cache
-    };
     for case in cases {
         let result = bytewise::parse_coordinate(case);
         assert_eq!(result, std::parse_coordinate(case));
-
-        #[cfg(feature = "memory-cache")]
-        match (result, memcache.parse_coordinate(case)) {
-            (Some(x), None) if x.0 > MAX_VALID_NUMBER => {}
-            (Some(x), Some(y)) if x == y => {}
-            (None, None) => {}
-            _ => panic!("bytewise and memcache did not agree on {:?}", case),
-        }
     }
 }
