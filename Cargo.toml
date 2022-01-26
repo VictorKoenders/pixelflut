@@ -21,7 +21,6 @@ max-threads = []
 
 # Extra features:
 windowed = ["minifb"]
-# memory-cache = []
 
 [dependencies]
 # Modes:
