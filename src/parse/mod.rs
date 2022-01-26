@@ -1,4 +1,6 @@
 pub mod bytewise;
+#[cfg(feature = "memory-cache")]
+pub mod memcache;
 pub mod python_generated;
 pub mod std;
 
@@ -47,8 +49,18 @@ fn crashes() {
         "+00 ".as_bytes(),
     ];
 
+    #[cfg(feature = "memory-cache")]
+    let memcache = {
+        let mut cache = memcache::NumCache::new();
+        cache.init();
+        cache
+    };
+
     for case in cases {
         bytewise::parse_coordinate(case);
         std::parse_coordinate(case);
+
+        #[cfg(feature = "memory-cache")]
+        memcache.parse_coordinate(case);
     }
 }

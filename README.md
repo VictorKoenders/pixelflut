@@ -44,6 +44,7 @@ This mode requires the `xkbcommon` library to be installed:
 Additional features can be enabled. These features can be added to the mode above with commas, e.g. `cargo run --features tokio,windowed`
 
 - `windowed`: Will run pixelflut in a windowed mode instead of on a linux framebuffer. On windows this flag is required.
+- `memory-cache`: Will use a memory cache to lookup values. This uses a large amount of memory (at least 4GB is recommended) and is currently slower than no memory cache
 
 # Recording metrics
 

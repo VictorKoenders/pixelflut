@@ -16,6 +16,31 @@ pub fn bench(c: &mut Criterion) {
         expected.push(num);
     }
 
+    #[cfg(feature = "memory-cache")]
+    {
+        let mut memcache = memcache::NumCache::new();
+        memcache.init();
+        group.bench_with_input(
+            "memcache",
+            &(&memcache, input.as_bytes(), &expected),
+            |b, &(cache, input, expected)| {
+                b.iter(|| {
+                    let mut buffer = input;
+
+                    let mut idx = 0;
+
+                    while let Some((num, remaining)) = cache.parse_coordinate(buffer) {
+                        assert_eq!(num, expected[idx]);
+                        idx += 1;
+                        buffer = remaining;
+                    }
+                    assert_eq!(idx, expected.len());
+                    assert!(buffer.is_empty(), "Remaining bytes: {:?}", buffer);
+                });
+            },
+        );
+    }
+
     group.bench_with_input(
         "bytewise",
         &(input.as_bytes(), &expected),
