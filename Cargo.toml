@@ -17,7 +17,7 @@ name = "memory-cache"
 required-features = ["memory-cache"]
 
 [features]
-default = []
+default = ["tokio"]
 
 # Modes:
 threadpool = []
