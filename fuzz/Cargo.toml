@@ -5,6 +5,6 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-pixelflut = { path = "..", features = ["tokio", "fuzz"] }
+[target.'cfg(unix)'.dependencies]
+pixelflut = { path = "..", features = ["tokio", "memory-cache", "windowed"] }
 afl = "0.11"

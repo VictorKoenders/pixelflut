@@ -1,0 +1,7 @@
+{
+	"rust-analyzer.cargo.features": [
+		"tokio",
+		"windowed",
+		"memory-cache"
+	]
+}

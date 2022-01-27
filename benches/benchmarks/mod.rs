@@ -1,5 +1,6 @@
 use criterion::Criterion;
 
+pub mod parsing_color;
 pub mod parsing_coordinates;
 
 pub fn misc(_c: &mut Criterion) {

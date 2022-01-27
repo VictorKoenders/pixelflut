@@ -3,7 +3,7 @@ use pixelflut::parse::*;
 use rand::{thread_rng, Rng};
 
 pub fn bench(c: &mut Criterion) {
-    let mut group = c.benchmark_group("parsing_coordinates");
+    let mut group = c.benchmark_group("coordinates");
 
     const ENTRIES: usize = 1_000_000;
     let mut input = String::with_capacity(ENTRIES * 5);
