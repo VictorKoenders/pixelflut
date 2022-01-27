@@ -7,5 +7,6 @@ criterion_main!(pixelflut);
 criterion_group!(
     pixelflut,
     benchmarks::parsing_coordinates::bench,
+    benchmarks::parsing_color::bench,
     benchmarks::misc
 );

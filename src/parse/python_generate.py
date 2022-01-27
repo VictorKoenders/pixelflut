@@ -68,7 +68,7 @@ for i in range(0, 0x100):
 		case = "b\"" + lowercase_hex + "\" | b\"" + lowercase_hex.upper() + "\""
 	else:
 		case = "b\"" + lowercase_hex + "\""
-	print("            " + case + " => Some(" + str(i) + "),")
+	print("            " + case + " => Some(" + hex(i) + "),")
 
 print("            _ => None,")
 print("        }")

@@ -1,4 +1,4 @@
-pub use self::num::*;
+pub use self::{hex::*, num::*};
 
 pub fn initialize() {
     assert_eq!(
@@ -11,15 +11,19 @@ pub fn initialize() {
 
     // Safety: Initialize should only be called once at the start of the application
     // therefor getting a mutable borrow should be fine.
-    unsafe { NUM_CACHE.init() };
+    unsafe {
+        NUM_CACHE.init();
+        HEX_CACHE.init();
+    }
 }
 
 pub fn parse_coordinate(buffer: &[u8]) -> Option<(u16, &[u8])> {
     // Safety: NUM_CACHE won't change after `initialize` is called
     unsafe { NUM_CACHE.parse_coordinate(buffer) }
 }
-pub fn parse_color(_: &[u8]) -> Option<(u8, u8, u8)> {
-    unimplemented!()
+pub fn parse_color(slice: &[u8]) -> Option<(u8, u8, u8)> {
+    // Safety: HEX_CACHE won't change after `initialize` is called
+    unsafe { HEX_CACHE.parse_color(slice) }
 }
 
 mod num {
@@ -44,10 +48,10 @@ mod num {
 
             for i in 0..=MAX_VALID_NUMBER {
                 let index = get_index_from_str(format!("{} ", i).as_bytes()).unwrap().0;
-                self.add(index, i as u16);
+                self.entries[index] = Some(i as u16);
             }
-            self.finalize();
-            let size = self.memory_size();
+            self.entries.shrink_to_fit();
+            let size = self.entries.len() * std::mem::size_of::<Option<u16>>();
             println!(
                 "Integer parsing memory cache allocated {}mb in {:?}",
                 size / 1024 / 1024,
@@ -62,28 +66,10 @@ mod num {
                 max_idx = max_idx.max(idx);
             }
 
-            self.entries.reserve(max_idx);
-        }
-        fn add(&mut self, index: usize, num: u16) {
-            if self.entries.capacity() < index {
-                println!("We did not allocate enough, ");
-                println!("Tried adding number {} at index {}", num, index);
-                println!("But we only have {} spots available", self.entries.len());
-                panic!();
-            }
-            while self.entries.len() <= index {
-                self.entries.push(None);
-            }
-            self.entries[index] = Some(num);
+            self.entries.resize(max_idx + 1, None);
         }
         fn get(&self, index: usize) -> Option<u16> {
             self.entries.get(index).and_then(|e| *e)
-        }
-        fn memory_size(&self) -> usize {
-            self.entries.len() * std::mem::size_of::<Option<u16>>()
-        }
-        pub fn finalize(&mut self) {
-            self.entries.shrink_to_fit();
         }
 
         pub fn parse_coordinate<'a>(&self, buff: &'a [u8]) -> Option<(u16, &'a [u8])> {
@@ -162,5 +148,60 @@ mod num {
             Some((1920u16, Default::default()))
         );
         assert_eq!(get_index_from_str_v1(b"503 2 "), Some((0x333035, 4)));
+    }
+}
+
+mod hex {
+    use std::time::Instant;
+
+    pub static mut HEX_CACHE: HexCache = HexCache::new();
+
+    pub struct HexCache {
+        entries: Vec<Option<u8>>,
+    }
+
+    impl HexCache {
+        pub const fn new() -> Self {
+            Self {
+                entries: Vec::new(),
+            }
+        }
+
+        pub fn init(&mut self) {
+            println!("Initializing hex cache, this might take a while");
+            let start = Instant::now();
+            let max_value = u16::from_be_bytes(*b"ff");
+            self.entries.resize(max_value as usize + 1, None);
+            for i in 0..=0xff {
+                let lowercase = format!("{:02x}", i);
+                let value = u16::from_be_bytes(lowercase.as_bytes().try_into().unwrap());
+                self.entries[value as usize] = Some(i);
+
+                let uppercase = format!("{:02X}", i);
+                let value = u16::from_be_bytes(uppercase.as_bytes().try_into().unwrap());
+                self.entries[value as usize] = Some(i);
+            }
+            println!(
+                "Hex parsing memory cache allocated {}kb in {:?}",
+                self.entries.len() * std::mem::size_of::<Option<u8>>() / 1024,
+                start.elapsed()
+            );
+        }
+
+        pub fn get(&self, bytes: [u8; 2]) -> Option<u8> {
+            let idx = u16::from_be_bytes(bytes) as usize;
+            self.entries.get(idx).copied().flatten()
+        }
+
+        pub fn parse_color(&self, slice: &[u8]) -> Option<(u8, u8, u8)> {
+            if slice.len() < 6 {
+                None
+            } else {
+                let r = self.get(slice[0..2].try_into().unwrap())?;
+                let g = self.get(slice[2..4].try_into().unwrap())?;
+                let b = self.get(slice[4..6].try_into().unwrap())?;
+                Some((r, g, b))
+            }
+        }
     }
 }

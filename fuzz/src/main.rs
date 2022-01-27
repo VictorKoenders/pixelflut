@@ -1,6 +1,6 @@
-use pixelflut::parse::*;
-
+#[cfg(unix)]
 fn main() {
+    use pixelflut::parse::*;
     let cache = {
         let mut cache = memcache::NumCache::new();
         cache.init();
@@ -12,3 +12,6 @@ fn main() {
         cache.parse_coordinate(data);
     });
 }
+
+#[cfg(not(unix))]
+fn main() {}

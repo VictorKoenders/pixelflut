@@ -1,6 +1,7 @@
 use criterion::Criterion;
 
 pub mod parsing_coordinates;
+pub mod parsing_color;
 
 pub fn misc(_c: &mut Criterion) {
     #[cfg(feature = "memory-cache")]
