@@ -933,7 +933,7 @@ pub fn parse_coordinate(buffer: &[u8]) -> Option<(u16, &[u8])> {
             b"1918" => return Some((1918, remaining)),
             b"1919" => return Some((1919, remaining)),
             b"1920" => return Some((1920, remaining)),
-            _ => {},
+            _ => {}
         }
     }
     if let Some(b' ') = buffer.get(3) {
@@ -1840,7 +1840,7 @@ pub fn parse_coordinate(buffer: &[u8]) -> Option<(u16, &[u8])> {
             b"997" => return Some((997, remaining)),
             b"998" => return Some((998, remaining)),
             b"999" => return Some((999, remaining)),
-            _ => {},
+            _ => {}
         }
     }
     if let Some(b' ') = buffer.get(2) {
@@ -1937,7 +1937,7 @@ pub fn parse_coordinate(buffer: &[u8]) -> Option<(u16, &[u8])> {
             b"97" => return Some((97, remaining)),
             b"98" => return Some((98, remaining)),
             b"99" => return Some((99, remaining)),
-            _ => {},
+            _ => {}
         }
     }
     if let Some(b' ') = buffer.get(1) {
@@ -1954,7 +1954,7 @@ pub fn parse_coordinate(buffer: &[u8]) -> Option<(u16, &[u8])> {
             b"7" => return Some((7, remaining)),
             b"8" => return Some((8, remaining)),
             b"9" => return Some((9, remaining)),
-            _ => {},
+            _ => {}
         }
     }
     None

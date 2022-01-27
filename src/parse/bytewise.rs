@@ -57,20 +57,22 @@ pub fn parse_color_unwrapped(buff: &[u8]) -> Option<(u8, u8, u8)> {
 
 fn parse_hex_unwrapped(buff: &[u8; 2]) -> Option<u8> {
     fn get_hex(b: u8) -> Option<u8> {
-        Some(b -  if b >= b'0' && b <= b'9' {
-            b'0'
-        } else if b >= b'A' && b <= b'F' {
-            b'A' - 10
-        } else if b >= b'a' && b <= b'f' {
-            b'a' - 10
-        } else {
-            return None;
-        })
+        Some(
+            b - if b >= b'0' && b <= b'9' {
+                b'0'
+            } else if b >= b'A' && b <= b'F' {
+                b'A' - 10
+            } else if b >= b'a' && b <= b'f' {
+                b'a' - 10
+            } else {
+                return None;
+            },
+        )
     }
 
     let first = get_hex(*buff.get(0)?)?;
     let second = get_hex(*buff.get(1)?)?;
-    
+
     Some(first * 16 + second)
 }
 
@@ -84,12 +86,6 @@ fn test() {
         parse_coordinate(b"1920 "),
         Some((1920u16, Default::default()))
     );
-    assert_eq!(
-        parse_color_unwrapped(b"df2B25"),
-        Some((0xdf, 0x2B, 0x25))
-    );
-    assert_eq!(
-        parse_color_unwrapped(b"9347ff"),
-        Some((0x93, 0x47, 0xff))
-    );
+    assert_eq!(parse_color_unwrapped(b"df2B25"), Some((0xdf, 0x2B, 0x25)));
+    assert_eq!(parse_color_unwrapped(b"9347ff"), Some((0x93, 0x47, 0xff)));
 }

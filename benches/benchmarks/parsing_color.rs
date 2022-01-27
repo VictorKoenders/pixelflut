@@ -48,9 +48,9 @@ pub fn bench(c: &mut Criterion) {
 
                     while let Some(output) = cache.parse_color(buffer) {
                         assert_eq!(
-                            output,
-                            expected[idx].0,
-                            "Expected {:?}, got {:?}, input: {:?}", expected[idx].0, output, expected[idx].1
+                            output, expected[idx].0,
+                            "Expected {:?}, got {:?}, input: {:?}",
+                            expected[idx].0, output, expected[idx].1
                         );
                         idx += 1;
                         buffer = &buffer[6..];
@@ -71,9 +71,9 @@ pub fn bench(c: &mut Criterion) {
                 let mut idx = 0;
                 while let Some(output) = bytewise::parse_color(buffer) {
                     assert_eq!(
-                        output,
-                        expected[idx].0,
-                        "Expected {:?}, got {:?}, input: {:?}", expected[idx].0, output, expected[idx].1
+                        output, expected[idx].0,
+                        "Expected {:?}, got {:?}, input: {:?}",
+                        expected[idx].0, output, expected[idx].1
                     );
                     idx += 1;
                     buffer = &buffer[6..];
@@ -93,9 +93,9 @@ pub fn bench(c: &mut Criterion) {
                 let mut idx = 0;
                 while let Some(output) = bytewise::parse_color_unwrapped(buffer) {
                     assert_eq!(
-                        output,
-                        expected[idx].0,
-                        "Expected {:?}, got {:?}, input: {:?}", expected[idx].0, output, expected[idx].1
+                        output, expected[idx].0,
+                        "Expected {:?}, got {:?}, input: {:?}",
+                        expected[idx].0, output, expected[idx].1
                     );
                     idx += 1;
                     buffer = &buffer[6..];
@@ -115,9 +115,9 @@ pub fn bench(c: &mut Criterion) {
                 let mut idx = 0;
                 while let Some(output) = std::parse_color(buffer) {
                     assert_eq!(
-                        output,
-                        expected[idx].0,
-                        "Expected {:?}, got {:?}, input: {:?}", expected[idx].0, output, expected[idx].1
+                        output, expected[idx].0,
+                        "Expected {:?}, got {:?}, input: {:?}",
+                        expected[idx].0, output, expected[idx].1
                     );
                     idx += 1;
                     buffer = &buffer[6..];
@@ -137,9 +137,9 @@ pub fn bench(c: &mut Criterion) {
                 let mut idx = 0;
                 while let Some(output) = python_generated::parse_color(buffer) {
                     assert_eq!(
-                        output,
-                        expected[idx].0,
-                        "Expected {:?}, got {:?}, input: {:?}", expected[idx].0, output, expected[idx].1
+                        output, expected[idx].0,
+                        "Expected {:?}, got {:?}, input: {:?}",
+                        expected[idx].0, output, expected[idx].1
                     );
                     idx += 1;
                     buffer = &buffer[6..];

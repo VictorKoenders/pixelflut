@@ -1,6 +1,6 @@
 pub use self::{hex::*, num::*};
 
-pub fn initialize() {
+pub fn initialize_coordinate() {
     assert_eq!(
         std::mem::size_of::<usize>(),
         std::mem::size_of::<u64>(),
@@ -13,6 +13,21 @@ pub fn initialize() {
     // therefor getting a mutable borrow should be fine.
     unsafe {
         NUM_CACHE.init();
+    }
+}
+
+pub fn initialize_color() {
+    assert_eq!(
+        std::mem::size_of::<usize>(),
+        std::mem::size_of::<u64>(),
+        "Pixelflut is optimized for 64-bit platforms, but is run in a different platform (pointer size is {}, expected {})",
+        std::mem::size_of::<usize>(),
+        std::mem::size_of::<u64>(),
+    );
+
+    // Safety: Initialize should only be called once at the start of the application
+    // therefor getting a mutable borrow should be fine.
+    unsafe {
         HEX_CACHE.init();
     }
 }

@@ -6,7 +6,24 @@ pub mod std;
 
 pub const MAX_VALID_NUMBER: u16 = 1920;
 
-pub use self::bytewise::*;
+// bytewise is the fastest way to parse coordinates
+pub use self::bytewise::parse_coordinate;
+
+// memory-cache is the fastest way to parse color
+// bytewise::parse_color_unwrapped is 2nd fastest
+cfg_if::cfg_if! {
+    if #[cfg(feature = "memory-cache")] {
+        pub use self::memcache::parse_color;
+    } else {
+        pub use self::bytewise::parse_color_unwrapped as parse_color;
+    }
+}
+
+pub fn initialize() {
+    self::bytewise::initialize();
+    #[cfg(feature = "memory-cache")]
+    self::memcache::initialize_color();
+}
 
 #[test]
 fn validate_coordinate() {
@@ -80,9 +97,12 @@ fn validate_hex() {
         );
         let bytewise_unwrapped = bytewise::parse_color_unwrapped(&input);
         assert_eq!(
-            bytewise_unwrapped, expected,
+            bytewise_unwrapped,
+            expected,
             "bytewise_unwrapped could not parse {}, expected {:?}, got {:?}",
-            ::std::str::from_utf8(&input).unwrap(), expected, bytewise_unwrapped
+            ::std::str::from_utf8(&input).unwrap(),
+            expected,
+            bytewise_unwrapped
         );
     }
 }
