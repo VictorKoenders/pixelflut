@@ -7,4 +7,4 @@ edition = "2021"
 
 [target.'cfg(unix)'.dependencies]
 pixelflut = { path = "..", features = ["tokio", "memory-cache", "windowed"] }
-afl = "0.11"
+afl = "0.12"
