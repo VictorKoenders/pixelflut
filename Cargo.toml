@@ -43,9 +43,10 @@ minifb = { version = "0.20", optional = true }
 
 # Base dependencies
 clap = { version = "3.0", features = ["derive"] }
-cfg-if = "1.0.0"
+cfg-if = "1.0"
 rand = "0.8"
 bmp = "0.5"
+bytemuck = "1.7"
 
 [dev-dependencies]
 criterion = { version = "0.3", features = ["html_reports"] }

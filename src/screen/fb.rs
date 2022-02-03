@@ -37,16 +37,12 @@ impl Screen {
                 bytes_per_pixel,
             })),
         };
-        let exporter = if let Some(export) = &args.export_frames {
-            Some(Exporter {
-                inner: result.inner,
-                path: export.clone(),
-                idx: 0,
-                running: true,
-            })
-        } else {
-            None
-        };
+        let exporter = args.export_frames.clone().map(|path| Exporter {
+            inner: result.inner,
+            path,
+            idx: 0,
+            running: true,
+        });
 
         (result, exporter)
     }
@@ -129,7 +125,7 @@ fn export(
     path.push(idx.to_string());
     path.set_extension("bgra");
     let mut file = std::fs::File::create(path)?;
-    write!(file, "BGRA {} {}\n", width, height)?;
+    writeln!(file, "BGRA {} {}", width, height)?;
     file.write_all(pixels)?;
     Ok(())
 }

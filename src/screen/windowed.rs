@@ -112,6 +112,6 @@ fn export(
     path.set_extension("0rgb");
     let mut file = std::fs::File::create(path)?;
     writeln!(file, "0RGB {} {}", width, height)?;
-    file.write_all(unsafe { &*(pixels as *const [u32] as *const [u8]) })?;
+    file.write_all(bytemuck::cast_slice(pixels))?;
     Ok(())
 }
