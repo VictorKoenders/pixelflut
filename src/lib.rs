@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::path::PathBuf;
 
 pub mod client;
 pub mod mode;
@@ -19,4 +20,8 @@ pub struct Args {
     /// How many cores to use with multithreading. Does not affect max-threads
     #[clap(short, long)]
     pub core_count: Option<usize>,
+
+    /// Set a folder to where the frames should be exported each frame.
+    #[clap(short, long)]
+    pub export_frames: Option<PathBuf>,
 }

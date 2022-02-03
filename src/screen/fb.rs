@@ -1,4 +1,6 @@
+use crate::Args;
 use framebuffer::Framebuffer;
+use std::{io::Write, path::PathBuf};
 
 struct ScreenInner {
     buffer: Framebuffer,
@@ -14,7 +16,7 @@ pub struct Screen {
 }
 
 impl Screen {
-    pub fn new() -> Self {
+    pub fn new(args: &Args) -> (Self, Option<Exporter>) {
         let buffer = Framebuffer::new("/dev/fb0").expect("Could not open frame buffer");
         let width = buffer.var_screen_info.xres;
         let height = buffer.var_screen_info.yres;
@@ -26,7 +28,7 @@ impl Screen {
             line_length, bytes_per_pixel
         );
 
-        Self {
+        let result = Self {
             inner: Box::into_raw(Box::new(ScreenInner {
                 buffer,
                 width,
@@ -34,7 +36,15 @@ impl Screen {
                 line_length,
                 bytes_per_pixel,
             })),
-        }
+        };
+        let exporter = args.export_frames.clone().map(|path| Exporter {
+            inner: result.inner,
+            path,
+            idx: 0,
+            running: true,
+        });
+
+        (result, exporter)
     }
 }
 
@@ -74,4 +84,48 @@ impl super::Screen for Screen {
         let inner = unsafe { &*self.inner };
         (inner.width, inner.height)
     }
+}
+
+pub struct Exporter {
+    inner: *mut ScreenInner,
+    running: bool,
+    idx: usize,
+    path: PathBuf,
+}
+
+impl super::ScreenUpdater for Exporter {
+    fn update(&mut self) {
+        let start = std::time::Instant::now();
+        let pixels = unsafe { &*self.inner };
+        let width = pixels.width;
+        let height = pixels.height;
+        let pixels = pixels.buffer.read_frame();
+        if let Err(e) = export(self.path.clone(), self.idx, width, height, pixels) {
+            eprintln!("Could not export image: {:?}", e);
+            self.running = false;
+        } else {
+            self.idx += 1;
+            println!("Exporting took {:?}", start.elapsed());
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    }
+
+    fn running(&self) -> bool {
+        self.running
+    }
+}
+
+fn export(
+    mut path: PathBuf,
+    idx: usize,
+    width: u32,
+    height: u32,
+    pixels: &[u8],
+) -> std::io::Result<()> {
+    path.push(idx.to_string());
+    path.set_extension("bgra");
+    let mut file = std::fs::File::create(path)?;
+    writeln!(file, "BGRA {} {}", width, height)?;
+    file.write_all(pixels)?;
+    Ok(())
 }
