@@ -17,7 +17,7 @@ impl Screen {
     pub fn new(args: &Args) -> (Self, Option<ScreenUpdater>) {
         let buffer = {
             let layout = Layout::array::<u32>(WIDTH * HEIGHT).unwrap();
-            NonNull::new(unsafe { std::alloc::alloc(layout).cast() })
+            NonNull::new(unsafe { std::alloc::alloc_zeroed(layout).cast() })
                 .expect("Could not allocate screen buffer")
         };
         let screen = Self { buffer };
