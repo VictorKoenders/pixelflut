@@ -217,15 +217,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bmp"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69985ff4f58085ac696454692d0b646a66ad1f9cc9be294c91dc51bb5df511ae"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
 name = "bstr"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -248,12 +239,6 @@ name = "bytemuck"
 version = "1.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "439989e6b8c38d1b6570a384ef1e49c8848128f5a97f3914baef02920842712f"
-
-[[package]]
-name = "byteorder"
-version = "1.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
 name = "bytes"
@@ -1042,7 +1027,6 @@ name = "pixelflut"
 version = "2.0.0-alpha.0"
 dependencies = [
  "async-std",
- "bmp",
  "bytemuck",
  "cfg-if 1.0.0",
  "clap 3.0.14",
