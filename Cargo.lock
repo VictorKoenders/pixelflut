@@ -14,7 +14,7 @@ version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4342d9cdad5c4d706c083cd6b741763cc3404cbb84010b9723384c00099c0d5d"
 dependencies = [
- "clap 3.1.5",
+ "clap 3.1.6",
  "libc",
  "rustc_version",
  "xdg",
@@ -315,9 +315,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.1.5"
+version = "3.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ced1892c55c910c1219e98d6fc8d71f6bddba7905866ce740066d8bfea859312"
+checksum = "d8c93436c21e4698bacadf42917db28b23017027a4deccb35dbe47a7e7840123"
 dependencies = [
  "atty",
  "bitflags",
@@ -1028,7 +1028,7 @@ dependencies = [
  "async-std",
  "bytemuck",
  "cfg-if 1.0.0",
- "clap 3.1.5",
+ "clap 3.1.6",
  "criterion",
  "framebuffer",
  "io-uring",
