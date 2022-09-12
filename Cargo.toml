@@ -48,7 +48,7 @@ rand = "0.8"
 bytemuck = "1.11"
 
 [dev-dependencies]
-criterion = { version = "0.3", features = ["html_reports"] }
+criterion = { version = "0.4", features = ["html_reports"] }
 rand = "0.8"
 
 [profile.release]
