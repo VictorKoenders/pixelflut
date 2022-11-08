@@ -27,6 +27,7 @@ pub fn initialize() {
 
 #[test]
 fn validate_coordinate() {
+    #[allow(clippy::type_complexity)]
     let mut cases: Vec<(Vec<u8>, Option<(u16, &'static [u8])>)> = Vec::new();
     for i in 0..=MAX_VALID_NUMBER {
         let str = format!("{} ", i);
@@ -51,6 +52,7 @@ fn validate_hex() {
     // Testing all cases takes too long (256*256*256*2 = 33.5 mil cases)
     // So we randomly pick 10k of them
 
+    #[allow(clippy::type_complexity)]
     let mut cases: Vec<(Vec<u8>, Option<(u8, u8, u8)>)> = Vec::new();
     let mut rng = thread_rng();
     for _ in 0..10_000 {
