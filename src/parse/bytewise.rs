@@ -70,8 +70,10 @@ fn parse_hex_unwrapped(buff: &[u8; 2]) -> Option<u8> {
         )
     }
 
-    let first = get_hex(*buff.get(0)?)?;
-    let second = get_hex(*buff.get(1)?)?;
+    let [first, second] = buff;
+
+    let first = get_hex(*first)?;
+    let second = get_hex(*second)?;
 
     Some(first * 16 + second)
 }

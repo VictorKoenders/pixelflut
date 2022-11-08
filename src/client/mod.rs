@@ -33,7 +33,7 @@ impl ClientState {
                 let color = parse_color(remaining)?;
                 screen.set_pixel(x, y, color);
                 slice = &remaining[6..];
-                while matches!(slice.get(0), Some(&b'\r' | &b'\n')) {
+                while matches!(slice.first(), Some(&b'\r' | &b'\n')) {
                     slice = &slice[1..];
                 }
             } else {
