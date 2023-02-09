@@ -80,7 +80,7 @@ impl super::ScreenUpdater for ScreenUpdater {
         let buffer: &[u32; WIDTH * HEIGHT] = unsafe { self.buffer.as_ref() };
         if let Some((idx, path)) = &mut self.export_frames {
             if let Err(e) = export(path.clone(), *idx, WIDTH as _, HEIGHT as _, buffer) {
-                eprintln!("Could not export frame: {:?}", e);
+                eprintln!("Could not export frame: {e:?}");
                 self.running = false;
             }
             *idx += 1;
@@ -111,7 +111,7 @@ fn export(
     path.push(idx.to_string());
     path.set_extension("0rgb");
     let mut file = std::fs::File::create(path)?;
-    writeln!(file, "0RGB {} {}", width, height)?;
+    writeln!(file, "0RGB {width} {height}")?;
     file.write_all(bytemuck::cast_slice(pixels))?;
     Ok(())
 }
