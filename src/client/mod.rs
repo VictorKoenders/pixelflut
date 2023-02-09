@@ -73,7 +73,7 @@ impl ResponseMessage {
         match self {
             ResponseMessage::Help => HELP_MESSAGE.into(),
             ResponseMessage::Size { width, height } => {
-                format!("SIZE {} {}\r\n", width, height).into_bytes().into()
+                format!("SIZE {width} {height}\r\n").into_bytes().into()
             }
         }
     }
