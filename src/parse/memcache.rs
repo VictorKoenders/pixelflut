@@ -62,7 +62,7 @@ mod num {
             self.allocate();
 
             for i in 0..=MAX_VALID_NUMBER {
-                let index = get_index_from_str(i.to_string().as_bytes()).unwrap().0;
+                let index = get_index_from_str(format!("{i} ").as_bytes()).unwrap().0;
                 self.entries[index] = Some(i);
             }
             self.entries.shrink_to_fit();
@@ -77,7 +77,7 @@ mod num {
         fn allocate(&mut self) {
             let mut max_idx = 0;
             for i in 0..=MAX_VALID_NUMBER {
-                let (idx, _) = get_index_from_str(i.to_string().as_bytes()).unwrap();
+                let (idx, _) = get_index_from_str(format!("{i} ").as_bytes()).unwrap();
                 max_idx = max_idx.max(idx);
             }
 
