@@ -48,7 +48,7 @@ minifb = { version = "0.23", optional = true }
 clap = { version = "4.0", features = ["derive"] }
 cfg-if = "1.0"
 rand = "0.8"
-bytemuck = "1.11"
+bytemuck = "1.13"
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }
