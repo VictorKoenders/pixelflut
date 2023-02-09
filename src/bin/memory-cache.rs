@@ -29,6 +29,6 @@ fn main() {
             buffer = remaining;
         }
         assert_eq!(idx, expected.len());
-        assert!(buffer.is_empty(), "Remaining bytes: {:?}", buffer);
+        assert!(buffer.is_empty(), "Remaining bytes: {buffer:?}");
     }
 }

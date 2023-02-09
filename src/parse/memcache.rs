@@ -62,8 +62,8 @@ mod num {
             self.allocate();
 
             for i in 0..=MAX_VALID_NUMBER {
-                let index = get_index_from_str(format!("{} ", i).as_bytes()).unwrap().0;
-                self.entries[index] = Some(i as u16);
+                let index = get_index_from_str(i.to_string().as_bytes()).unwrap().0;
+                self.entries[index] = Some(i);
             }
             self.entries.shrink_to_fit();
             let size = self.entries.len() * std::mem::size_of::<Option<u16>>();
@@ -77,7 +77,7 @@ mod num {
         fn allocate(&mut self) {
             let mut max_idx = 0;
             for i in 0..=MAX_VALID_NUMBER {
-                let (idx, _) = get_index_from_str(format!("{} ", i).as_bytes()).unwrap();
+                let (idx, _) = get_index_from_str(i.to_string().as_bytes()).unwrap();
                 max_idx = max_idx.max(idx);
             }
 
@@ -188,11 +188,11 @@ mod hex {
             let max_value = u16::from_be_bytes(*b"ff");
             self.entries.resize(max_value as usize + 1, None);
             for i in 0..=0xff {
-                let lowercase = format!("{:02x}", i);
+                let lowercase = format!("{i:02x}");
                 let value = u16::from_be_bytes(lowercase.as_bytes().try_into().unwrap());
                 self.entries[value as usize] = Some(i);
 
-                let uppercase = format!("{:02X}", i);
+                let uppercase = format!("{i:02X}");
                 let value = u16::from_be_bytes(uppercase.as_bytes().try_into().unwrap());
                 self.entries[value as usize] = Some(i);
             }
