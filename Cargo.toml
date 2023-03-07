@@ -32,7 +32,7 @@ memory-cache = []
 
 [dependencies]
 # Modes:
-tokio = { version = "1.25", features = [
+tokio = { version = "1.26", features = [
 	"rt-multi-thread",
 	"net",
 	"io-util",
